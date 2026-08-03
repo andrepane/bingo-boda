@@ -9,8 +9,6 @@
 const fotosInvitados = [
     "images/alicia.png",
     "images/alicia.webp",
-    "images/ana-amiga.png",
-    "images/ana-amiga.webp",
     "images/ana.png",
     "images/ana.webp",
     "images/andrea.png",
