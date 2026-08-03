@@ -137,10 +137,13 @@ button:hover {
     position: relative;
     padding: 16px;
     overflow: hidden;
-    border: 2px solid var(--verde);
-    border-radius: 16px;
+    box-sizing: border-box;
+    border: 1.5px solid var(--verde);
+    border-radius: 12px;
     background: var(--blanco);
-    box-shadow: 0 8px 25px var(--sombra);
+    box-shadow:
+        inset 0 0 0 1px var(--verde-claro),
+        0 8px 25px var(--sombra);
     break-inside: avoid;
     page-break-inside: avoid;
 }
@@ -148,22 +151,22 @@ button:hover {
 .carton::before,
 .carton::after {
     position: absolute;
-    width: 110px;
-    height: 110px;
-    border: 2px solid var(--verde-claro);
+    width: 64px;
+    height: 64px;
+    border: 1px solid var(--verde-claro);
     border-radius: 50%;
     content: "";
     pointer-events: none;
 }
 
 .carton::before {
-    top: -65px;
-    left: -65px;
+    top: -40px;
+    left: -40px;
 }
 
 .carton::after {
-    right: -65px;
-    bottom: -65px;
+    right: -40px;
+    bottom: -40px;
 }
 
 .carton__cabecera {
@@ -172,12 +175,36 @@ button:hover {
 }
 
 .carton__cabecera h2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
     margin: 0;
     font-family: Georgia, "Times New Roman", serif;
     font-size: 2rem;
     font-weight: normal;
     letter-spacing: 0.14em;
     color: var(--verde-oscuro);
+}
+
+.carton__cabecera h2::before,
+.carton__cabecera h2::after {
+    width: clamp(28px, 9%, 54px);
+    height: 1px;
+    background: var(--verde);
+    content: "";
+}
+
+.carton__monograma {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    z-index: 1;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 0.7rem;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    color: var(--verde);
 }
 
 .tabla-bingo {
@@ -193,15 +220,15 @@ button:hover {
     justify-content: center;
     aspect-ratio: 1 / 1;
     min-width: 0;
-    border-right: 2px solid var(--verde);
-    border-bottom: 2px solid var(--verde);
+    border-right: 1px solid var(--borde);
+    border-bottom: 1px solid var(--borde);
     background: var(--blanco);
 }
 
 .casilla--numero {
     font-family: Georgia, "Times New Roman", serif;
     font-size: clamp(1.15rem, 3vw, 2rem);
-    font-weight: bold;
+    font-weight: 600;
     color: var(--verde-oscuro);
 }
 
@@ -283,7 +310,7 @@ button:hover {
         box-sizing: border-box;
         border: 0.4mm solid var(--verde);
         border-radius: 3mm;
-        box-shadow: none;
+        box-shadow: inset 0 0 0 0.2mm var(--verde-claro);
         break-inside: avoid;
         page-break-inside: avoid;
     }
@@ -307,15 +334,27 @@ button:hover {
         line-height: 1;
     }
 
+    .carton__cabecera h2::before,
+    .carton__cabecera h2::after {
+        width: 11mm;
+        height: 0.2mm;
+    }
+
+    .carton__monograma {
+        top: 2.5mm;
+        right: 3mm;
+        font-size: 7pt;
+    }
+
     .tabla-bingo {
-        border-width: 0.35mm;
+        border-width: 0.45mm;
     }
 
     .casilla {
         aspect-ratio: auto;
         height: 23mm;
-        border-right-width: 0.35mm;
-        border-bottom-width: 0.35mm;
+        border-right-width: 0.25mm;
+        border-bottom-width: 0.25mm;
     }
 
     .casilla--numero {
@@ -335,18 +374,18 @@ button:hover {
 
     .carton::before,
     .carton::after {
-        width: 22mm;
-        height: 22mm;
-        border-width: 0.35mm;
+        width: 12mm;
+        height: 12mm;
+        border-width: 0.2mm;
     }
 
     .carton::before {
-        top: -13mm;
-        left: -13mm;
+        top: -7.5mm;
+        left: -7.5mm;
     }
 
     .carton::after {
-        right: -13mm;
-        bottom: -13mm;
+        right: -7.5mm;
+        bottom: -7.5mm;
     }
 }
