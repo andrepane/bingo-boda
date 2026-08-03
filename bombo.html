@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#667254">
+    <title>Bombo digital | Bingo Andrea &amp; Cintia</title>
+    <link rel="stylesheet" href="bombo.css">
+</head>
+<body>
+    <nav class="navegacion" aria-label="Navegación principal">
+        <a href="index.html">Cartones</a>
+        <a class="activo" href="bombo.html" aria-current="page">Bombo</a>
+    </nav>
+
+    <header class="cabecera">
+        <p class="subtitulo">Andrea &amp; Cintia</p>
+        <h1>Bombo digital</h1>
+        <p>Saca las bolas del 1 al 90, sin repeticiones.</p>
+    </header>
+
+    <main>
+        <section class="panel panel-principal" aria-labelledby="titulo-partida">
+            <h2 id="titulo-partida" class="sr-only">Partida de bingo</h2>
+            <div id="estado" class="estado" role="status" aria-live="polite">Preparado</div>
+            <p id="restantes" class="restantes">Quedan 90 de 90</p>
+
+            <div class="numeros">
+                <div class="numero-actual">
+                    <span class="etiqueta">Número actual</span>
+                    <div id="bolaActual" class="bola" aria-live="assertive" aria-atomic="true">—</div>
+                </div>
+                <div class="numero-anterior">
+                    <span class="etiqueta">Número anterior</span>
+                    <span id="numeroAnterior" class="bola-anterior">—</span>
+                </div>
+            </div>
+
+            <p id="mensaje" class="mensaje" aria-live="assertive"></p>
+            <button id="sacar" class="boton boton-principal" type="button">Sacar número</button>
+
+            <div class="automatico">
+                <fieldset id="selectorIntervalo">
+                    <legend>Intervalo automático</legend>
+                    <div class="opciones" aria-label="Opciones rápidas en segundos">
+                        <button type="button" class="opcion" data-segundos="3">3 s</button>
+                        <button type="button" class="opcion opcion--activa" data-segundos="5">5 s</button>
+                        <button type="button" class="opcion" data-segundos="10">10 s</button>
+                        <button type="button" class="opcion" data-segundos="15">15 s</button>
+                        <button type="button" class="opcion" data-segundos="20">20 s</button>
+                        <button type="button" class="opcion" data-segundos="30">30 s</button>
+                    </div>
+                    <label class="personalizado" for="intervalo">Otro intervalo (1–300 s)</label>
+                    <input id="intervalo" type="number" min="1" max="300" step="1" value="5" inputmode="numeric">
+                    <p id="errorIntervalo" class="error" aria-live="polite"></p>
+                </fieldset>
+                <p id="cuentaAtras" class="cuenta-atras" aria-live="polite">Automático detenido</p>
+                <div class="acciones-auto">
+                    <button id="iniciar" class="boton" type="button">Iniciar automático</button>
+                    <button id="pausar" class="boton boton-secundario" type="button" disabled>Pausar</button>
+                </div>
+            </div>
+
+            <button id="reiniciar" class="reiniciar" type="button">Reiniciar partida</button>
+        </section>
+
+        <details class="panel historial">
+            <summary>Historial (<span id="totalExtraidos">0</span>)</summary>
+            <div class="pestanas" role="tablist" aria-label="Vista del historial">
+                <button id="tabSalida" class="pestana activa" type="button" role="tab" aria-selected="true" aria-controls="vistaSalida">Orden de salida</button>
+                <button id="tabNumerico" class="pestana" type="button" role="tab" aria-selected="false" aria-controls="vistaNumerica">Orden numérico</button>
+            </div>
+            <div id="vistaSalida" class="vista" role="tabpanel" aria-labelledby="tabSalida">
+                <p id="historialVacio">Todavía no ha salido ningún número.</p>
+                <ol id="listaSalida" class="lista-salida"></ol>
+            </div>
+            <div id="vistaNumerica" class="vista" role="tabpanel" aria-labelledby="tabNumerico" hidden>
+                <div id="cuadricula" class="cuadricula" aria-label="Números del 1 al 90"></div>
+            </div>
+        </details>
+    </main>
+
+    <dialog id="confirmacion">
+        <form method="dialog">
+            <h2>¿Reiniciar la partida?</h2>
+            <p>Se borrará todo el historial, volverán a estar disponibles las 90 bolas y se detendrá el modo automático.</p>
+            <div class="acciones-dialogo">
+                <button class="boton boton-secundario" value="cancel">Cancelar</button>
+                <button class="boton boton-peligro" value="confirm">Sí, reiniciar</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script src="bombo.js"></script>
+</body>
+</html>
