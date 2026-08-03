@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Bingo Andrea & Cintia</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header class="cabecera">
+        <p class="cabecera__subtitulo">Andrea & Cintia</p>
+        <h1>Bingo de la boda</h1>
+        <p>Genera cartones con las fotografías de los invitados.</p>
+    </header>
+
+    <main>
+        <section class="panel no-imprimir">
+            <div class="campo">
+                <label for="cantidadCartones">
+                    Número de cartones
+                </label>
+
+                <input
+                    id="cantidadCartones"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value="10"
+                >
+            </div>
+
+            <div class="botones">
+                <button id="botonGenerar" type="button">
+                    Generar cartones
+                </button>
+
+                <button
+                    id="botonImprimir"
+                    class="boton-secundario"
+                    type="button"
+                >
+                    Imprimir
+                </button>
+            </div>
+
+            <p id="mensaje" class="mensaje" aria-live="polite"></p>
+        </section>
+
+        <section
+            id="contenedorCartones"
+            class="contenedor-cartones"
+        ></section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
