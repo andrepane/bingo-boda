@@ -362,7 +362,7 @@ function generarCartones() {
     if (
         !Number.isInteger(cantidad) ||
         cantidad < 1 ||
-        cantidad > 100
+        cantidad > 500
     ) {
         mostrarMensaje(
             "Introduce una cantidad entre 1 y 100."
