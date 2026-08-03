@@ -277,12 +277,18 @@ button:hover {
 
 @media print {
     @page {
-        size: A4 landscape;
-        margin: 10mm;
+        size: A4 portrait;
+        margin: 6mm;
     }
 
+    html,
     body {
+        width: 100%;
+        margin: 0;
+        padding: 0;
         background: white;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
     }
 
     .no-imprimir,
@@ -297,55 +303,99 @@ button:hover {
 
     .contenedor-cartones {
         display: block;
+        width: 100%;
     }
 
     .carton {
         width: 100%;
+        height: 136mm;
         max-width: none;
-        margin: 0 0 8mm;
-        padding: 7mm;
-        border-radius: 0;
+        margin: 0 0 7mm;
+        padding: 5mm;
+        border: 0.4mm solid var(--verde);
+        border-radius: 3mm;
         box-shadow: none;
+        break-inside: avoid-page;
+        page-break-inside: avoid;
+    }
+
+    .carton:nth-child(even) {
+        margin-bottom: 0;
+    }
+
+    .carton:nth-child(even):not(:last-child) {
         break-after: page;
         page-break-after: always;
     }
 
-    .carton:last-child {
-        break-after: auto;
-        page-break-after: auto;
-    }
-
     .carton__cabecera {
-        margin-bottom: 4mm;
+        margin-bottom: 2.5mm;
     }
 
     .carton__cabecera h2 {
-        font-size: 24pt;
+        font-size: 21pt;
     }
 
     .carton__nombres {
-        font-size: 15pt;
+        margin: 1mm 0;
+        font-size: 13pt;
     }
 
     .carton__fecha {
-        font-size: 8pt;
+        font-size: 7.5pt;
+    }
+
+    .carton__numero {
+        top: 4mm;
+        right: 5mm;
+        font-size: 7.5pt;
+    }
+
+    .tabla-bingo {
+        border-width: 0.35mm;
     }
 
     .casilla {
         aspect-ratio: auto;
-        height: 31mm;
+        height: 25mm;
+        border-right-width: 0.35mm;
+        border-bottom-width: 0.35mm;
     }
 
     .casilla--numero {
-        font-size: 22pt;
+        font-size: 17pt;
     }
 
     .casilla--foto {
-        padding: 2mm;
+        padding: 1.5mm;
     }
 
     .casilla--foto img {
-        width: 25mm;
-        height: 25mm;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+    }
+
+    .carton__pie {
+        margin-top: 2.5mm;
+        font-size: 9pt;
+    }
+
+    .carton::before,
+    .carton::after {
+        width: 22mm;
+        height: 22mm;
+        border-width: 0.35mm;
+    }
+
+    .carton::before {
+        top: -13mm;
+        left: -13mm;
+    }
+
+    .carton::after {
+        right: -13mm;
+        bottom: -13mm;
     }
 }
