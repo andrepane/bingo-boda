@@ -39,6 +39,47 @@
             <p id="mensaje" class="mensaje" aria-live="assertive"></p>
             <button id="sacar" class="boton boton-principal" type="button">Sacar número</button>
 
+            <details class="voz-configuracion">
+                <summary>Voz del bingo</summary>
+                <fieldset id="controlesVoz" class="voz-controles">
+                    <div class="campo-voz campo-voz--ancho">
+                        <label for="modoVoz">Modo de locución</label>
+                        <select id="modoVoz">
+                            <option value="es-it">Español + italiano</option>
+                            <option value="it-es">Italiano + español</option>
+                            <option value="es">Solo español</option>
+                            <option value="it">Solo italiano</option>
+                            <option value="off">Sin voz</option>
+                        </select>
+                    </div>
+                    <div class="campo-voz">
+                        <label for="vozEspanola">Voz española</label>
+                        <select id="vozEspanola"></select>
+                    </div>
+                    <div class="campo-voz">
+                        <label for="vozItaliana">Voce italiana</label>
+                        <select id="vozItaliana"></select>
+                    </div>
+                    <div class="campo-voz">
+                        <label for="velocidadVoz">Velocidad de voz</label>
+                        <select id="velocidadVoz">
+                            <option value="slow">Lenta</option>
+                            <option value="normal">Normal</option>
+                            <option value="lively">Animada</option>
+                        </select>
+                    </div>
+                    <div class="campo-voz">
+                        <label for="tonoVoz">Tono</label>
+                        <select id="tonoVoz">
+                            <option value="normal">Normal</option>
+                            <option value="fun">Divertido</option>
+                        </select>
+                    </div>
+                    <button id="probarVoces" class="boton campo-voz--ancho" type="button">Probar voces (no saca bola)</button>
+                </fieldset>
+                <p id="avisoVoz" class="aviso-voz" role="status" hidden>La voz no está disponible en este navegador</p>
+            </details>
+
             <div class="automatico">
                 <fieldset id="selectorIntervalo">
                     <legend>Intervalo automático</legend>
