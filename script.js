@@ -1,35 +1,64 @@
 "use strict";
 
 /*
- * Añade aquí las rutas de todas las fotografías.
- *
- * Los nombres deben coincidir exactamente con los archivos
- * que subas a la carpeta "invitados".
- *
- * Se recomienda:
- * - formato JPG, PNG o WEBP;
- * - fotografías cuadradas;
- * - una sola cara por fotografía.
+ * Rutas relativas de las fotografías disponibles en "images".
+ * Los nombres coinciden exactamente con los archivos para que
+ * funcionen también al publicar el sitio en GitHub Pages.
  */
 
 const fotosInvitados = [
-    "invitados/ana.jpg",
-    "invitados/juan.jpg",
-    "invitados/maria.jpg",
-    "invitados/pedro.jpg",
-    "invitados/laura.jpg",
-    "invitados/carlos.jpg",
-    "invitados/elena.jpg",
-    "invitados/david.jpg",
-    "invitados/sara.jpg",
-    "invitados/pablo.jpg",
-    "invitados/lucia.jpg",
-    "invitados/marco.jpg",
-    "invitados/sofia.jpg",
-    "invitados/antonio.jpg",
-    "invitados/paula.jpg",
-    "invitados/roberto.jpg",
-    "invitados/claudia.jpg"
+    "images/alicia.png",
+    "images/alicia.webp",
+    "images/ana-amiga.png",
+    "images/ana-amiga.webp",
+    "images/ana.png",
+    "images/ana.webp",
+    "images/andrea.png",
+    "images/andrea.webp",
+    "images/cintia.png",
+    "images/cintia.webp",
+    "images/gabri.png",
+    "images/gabri.webp",
+    "images/gigi.png",
+    "images/gigi.webp",
+    "images/irene.png",
+    "images/irene.webp",
+    "images/jesus.png",
+    "images/jesus.webp",
+    "images/josefina.png",
+    "images/josefina.webp",
+    "images/lisa.png",
+    "images/lisa.webp",
+    "images/manolo.png",
+    "images/manolo.webp",
+    "images/marina.png",
+    "images/marina.webp",
+    "images/maya-asomando.png",
+    "images/maya-asomando.webp",
+    "images/maya-atenta.png",
+    "images/maya-atenta.webp",
+    "images/maya-jugando.png",
+    "images/maya-jugando.webp",
+    "images/maya-movil.png",
+    "images/maya-movil.webp",
+    "images/maya-olfateando.png",
+    "images/maya-olfateando.webp",
+    "images/maya-panza.png",
+    "images/maya-panza.webp",
+    "images/maya-saludando.png",
+    "images/maya-saludando.webp",
+    "images/maya-tumbada.png",
+    "images/maya-tumbada.webp",
+    "images/maya.png",
+    "images/maya.webp",
+    "images/rachele.png",
+    "images/rachele.webp",
+    "images/rosa.png",
+    "images/rosa.webp",
+    "images/simona.png",
+    "images/simona.webp",
+    "images/tito.png",
+    "images/tito.webp"
 ];
 
 const cantidadInput = document.getElementById("cantidadCartones");
@@ -315,15 +344,20 @@ function crearElementoCarton(carton, numeroCarton) {
 
                 if (fotos.length > 0) {
                     const imagen = document.createElement("img");
+                    const rutaFoto = fotos[indiceFoto];
 
-                    imagen.src = fotos[indiceFoto];
+                    imagen.src = rutaFoto;
                     imagen.alt = "Fotografía de un invitado";
                     imagen.loading = "eager";
 
                     imagen.addEventListener("error", () => {
-                        casilla.textContent = "Foto";
+                        casilla.textContent = "Foto no disponible";
                         casilla.title =
-                            `No se encontró: ${imagen.src}`;
+                            `No se pudo cargar: ${rutaFoto}`;
+
+                        mostrarMensaje(
+                            `No se pudo cargar la fotografía: ${rutaFoto}`
+                        );
 
                         imagen.remove();
                     });
