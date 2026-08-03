@@ -273,10 +273,14 @@ function crearElementoCarton(carton) {
     const cabecera = document.createElement("header");
     cabecera.className = "carton__cabecera";
 
+    const monograma = document.createElement("span");
+    monograma.className = "carton__monograma";
+    monograma.textContent = "A \u00b7 C";
+
     const titulo = document.createElement("h2");
     titulo.textContent = "BINGO";
 
-    cabecera.appendChild(titulo);
+    cabecera.append(monograma, titulo);
 
     const tabla = document.createElement("div");
     tabla.className = "tabla-bingo";

@@ -1,7 +1,9 @@
 :root {
     --verde: #667254;
     --verde-oscuro: #47513b;
-    --verde-claro: #e8ecdf;
+    --verde-claro: #aeb99b;
+    --verde-linea: #849273;
+    --crema-verde: #f4f3e9;
     --crema: #faf8f1;
     --blanco: #ffffff;
     --texto: #2d3129;
@@ -135,56 +137,80 @@ button:hover {
 
 .carton {
     position: relative;
-    padding: 16px;
+    padding: 10px;
     overflow: hidden;
-    border: 2px solid var(--verde);
-    border-radius: 16px;
+    border: 1.5px solid var(--verde);
+    border-radius: 11px;
     background: var(--blanco);
     box-shadow: 0 8px 25px var(--sombra);
     break-inside: avoid;
     page-break-inside: avoid;
+    outline: 1px solid #d7ddcc;
+    outline-offset: -4px;
 }
 
 .carton::before,
 .carton::after {
     position: absolute;
-    width: 110px;
-    height: 110px;
-    border: 2px solid var(--verde-claro);
+    width: 54px;
+    height: 54px;
+    border: 1px solid var(--verde-claro);
     border-radius: 50%;
     content: "";
     pointer-events: none;
 }
 
 .carton::before {
-    top: -65px;
-    left: -65px;
+    top: -34px;
+    left: -34px;
 }
 
 .carton::after {
-    right: -65px;
-    bottom: -65px;
+    right: -34px;
+    bottom: -34px;
 }
 
 .carton__cabecera {
-    margin-bottom: 8px;
+    position: relative;
+    margin-bottom: 3px;
     text-align: center;
+}
+
+.carton__monograma {
+    position: absolute;
+    top: 2px;
+    right: 5px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    color: var(--verde-linea);
 }
 
 .carton__cabecera h2 {
     margin: 0;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    font-size: 1.45rem;
     font-weight: normal;
     letter-spacing: 0.14em;
     color: var(--verde-oscuro);
 }
 
+.carton__cabecera h2::before,
+.carton__cabecera h2::after {
+    width: 38px;
+    height: 1px;
+    background: var(--verde-claro);
+    content: "";
+}
+
 .tabla-bingo {
     display: grid;
-    grid-template-columns: repeat(9, 1fr);
-    border-top: 2px solid var(--verde);
-    border-left: 2px solid var(--verde);
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    border: 1.5px solid var(--verde);
 }
 
 .casilla {
@@ -193,21 +219,30 @@ button:hover {
     justify-content: center;
     aspect-ratio: 1 / 1;
     min-width: 0;
-    border-right: 2px solid var(--verde);
-    border-bottom: 2px solid var(--verde);
+    border-right: 1px solid var(--verde-linea);
+    border-bottom: 1px solid var(--verde-linea);
     background: var(--blanco);
+}
+
+
+.casilla:nth-child(9n) {
+    border-right: 0;
+}
+
+.casilla:nth-last-child(-n + 9) {
+    border-bottom: 0;
 }
 
 .casilla--numero {
     font-family: Georgia, "Times New Roman", serif;
     font-size: clamp(1.15rem, 3vw, 2rem);
-    font-weight: bold;
+    font-weight: 600;
     color: var(--verde-oscuro);
 }
 
 .casilla--foto {
-    padding: 4px;
-    background: var(--verde-claro);
+    padding: 2px;
+    background: linear-gradient(to bottom, #f7f6ee, var(--crema-verde));
 }
 
 .casilla--foto img {
@@ -216,8 +251,7 @@ button:hover {
     height: 100%;
     min-width: 0;
     object-fit: contain;
-    object-position: center;
-    border-radius: 50%;
+    object-position: center bottom;
 }
 
 @media (max-width: 650px) {
@@ -226,7 +260,7 @@ button:hover {
     }
 
     .carton {
-        padding: 14px;
+        padding: 9px;
     }
 
     .casilla--foto {
@@ -270,81 +304,102 @@ button:hover {
     }
 
     .contenedor-cartones {
-        display: block;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(3, auto);
+        grid-auto-flow: row;
+        column-gap: 3mm;
+        row-gap: 3mm;
+        align-content: start;
+        align-items: start;
         width: 100%;
     }
 
     .carton {
         width: 100%;
         max-width: none;
-        margin: 0 0 3mm;
-        padding: 3mm;
-        border: 0.4mm solid var(--verde);
-        border-radius: 3mm;
+        margin: 0;
+        padding: 2mm;
+        border: 0.35mm solid var(--verde);
+        border-radius: 2mm;
+        outline-width: 0.2mm;
+        outline-offset: -1mm;
         box-shadow: none;
         break-inside: avoid;
         page-break-inside: avoid;
     }
 
-    .carton:nth-child(3n),
-    .carton:last-child {
-        margin-bottom: 0;
-    }
-
-    .carton:nth-child(3n):not(:last-child) {
+    .carton:nth-child(6n):not(:last-child) {
         break-after: page;
         page-break-after: always;
     }
 
+    .carton:nth-child(6n + 1):not(:first-child) {
+        break-before: page;
+        page-break-before: always;
+    }
+
     .carton__cabecera {
-        margin-bottom: 1.5mm;
+        margin-bottom: 0.7mm;
     }
 
     .carton__cabecera h2 {
-        font-size: 18pt;
+        font-size: 11pt;
         line-height: 1;
     }
 
+    .carton__cabecera h2::before,
+    .carton__cabecera h2::after {
+        width: 9mm;
+        height: 0.2mm;
+    }
+
+    .carton__monograma {
+        top: 0;
+        right: 1mm;
+        font-size: 5pt;
+    }
+
     .tabla-bingo {
-        border-width: 0.35mm;
+        border-width: 0.3mm;
     }
 
     .casilla {
         aspect-ratio: auto;
-        height: 25.5mm;
-        border-right-width: 0.35mm;
-        border-bottom-width: 0.35mm;
+        height: 20mm;
+        border-right-width: 0.18mm;
+        border-bottom-width: 0.18mm;
     }
 
     .casilla--numero {
-        font-size: 17pt;
+        font-size: 11pt;
     }
 
     .casilla--foto {
-        padding: 1.5mm;
+        padding: 0.4mm;
     }
 
     .casilla--foto img {
         width: 100%;
         height: 100%;
         object-fit: contain;
-        object-position: center;
+        object-position: center bottom;
     }
 
     .carton::before,
     .carton::after {
-        width: 22mm;
-        height: 22mm;
-        border-width: 0.35mm;
+        width: 11mm;
+        height: 11mm;
+        border-width: 0.2mm;
     }
 
     .carton::before {
-        top: -13mm;
-        left: -13mm;
+        top: -7mm;
+        left: -7mm;
     }
 
     .carton::after {
-        right: -13mm;
-        bottom: -13mm;
+        right: -7mm;
+        bottom: -7mm;
     }
 }
