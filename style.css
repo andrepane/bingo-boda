@@ -135,7 +135,7 @@ button:hover {
 
 .carton {
     position: relative;
-    padding: 24px;
+    padding: 16px;
     overflow: hidden;
     border: 2px solid var(--verde);
     border-radius: 16px;
@@ -167,7 +167,7 @@ button:hover {
 }
 
 .carton__cabecera {
-    margin-bottom: 16px;
+    margin-bottom: 8px;
     text-align: center;
 }
 
@@ -178,29 +178,6 @@ button:hover {
     font-weight: normal;
     letter-spacing: 0.14em;
     color: var(--verde-oscuro);
-}
-
-.carton__nombres {
-    margin: 5px 0;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 1.25rem;
-    font-style: italic;
-    color: var(--verde);
-}
-
-.carton__fecha {
-    margin: 0;
-    font-size: 0.78rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-}
-
-.carton__numero {
-    position: absolute;
-    top: 14px;
-    right: 16px;
-    font-size: 0.75rem;
-    color: var(--verde);
 }
 
 .tabla-bingo {
@@ -238,18 +215,9 @@ button:hover {
     width: 100%;
     height: 100%;
     min-width: 0;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center;
     border-radius: 50%;
-}
-
-.carton__pie {
-    margin: 14px 0 0;
-    text-align: center;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 0.95rem;
-    font-style: italic;
-    color: var(--verde);
 }
 
 @media (max-width: 650px) {
@@ -308,47 +276,33 @@ button:hover {
 
     .carton {
         width: 100%;
-        height: 136mm;
         max-width: none;
-        margin: 0 0 7mm;
-        padding: 5mm;
+        margin: 0 0 3mm;
+        padding: 3mm;
         border: 0.4mm solid var(--verde);
         border-radius: 3mm;
         box-shadow: none;
-        break-inside: avoid-page;
+        break-inside: avoid;
         page-break-inside: avoid;
     }
 
-    .carton:nth-child(even) {
+    .carton:nth-child(3n),
+    .carton:last-child {
         margin-bottom: 0;
     }
 
-    .carton:nth-child(even):not(:last-child) {
+    .carton:nth-child(3n):not(:last-child) {
         break-after: page;
         page-break-after: always;
     }
 
     .carton__cabecera {
-        margin-bottom: 2.5mm;
+        margin-bottom: 1.5mm;
     }
 
     .carton__cabecera h2 {
-        font-size: 21pt;
-    }
-
-    .carton__nombres {
-        margin: 1mm 0;
-        font-size: 13pt;
-    }
-
-    .carton__fecha {
-        font-size: 7.5pt;
-    }
-
-    .carton__numero {
-        top: 4mm;
-        right: 5mm;
-        font-size: 7.5pt;
+        font-size: 18pt;
+        line-height: 1;
     }
 
     .tabla-bingo {
@@ -357,7 +311,7 @@ button:hover {
 
     .casilla {
         aspect-ratio: auto;
-        height: 25mm;
+        height: 25.5mm;
         border-right-width: 0.35mm;
         border-bottom-width: 0.35mm;
     }
@@ -373,13 +327,8 @@ button:hover {
     .casilla--foto img {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
         object-position: center;
-    }
-
-    .carton__pie {
-        margin-top: 2.5mm;
-        font-size: 9pt;
     }
 
     .carton::before,

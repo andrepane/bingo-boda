@@ -266,13 +266,9 @@ function seleccionarFotosParaCarton(cantidadHuecos) {
 /**
  * Crea el elemento HTML de un cartón.
  */
-function crearElementoCarton(carton, numeroCarton) {
+function crearElementoCarton(carton) {
     const articulo = document.createElement("article");
     articulo.className = "carton";
-
-    const indicador = document.createElement("span");
-    indicador.className = "carton__numero";
-    indicador.textContent = `Cartón ${numeroCarton}`;
 
     const cabecera = document.createElement("header");
     cabecera.className = "carton__cabecera";
@@ -280,21 +276,13 @@ function crearElementoCarton(carton, numeroCarton) {
     const titulo = document.createElement("h2");
     titulo.textContent = "BINGO";
 
-    const nombres = document.createElement("p");
-    nombres.className = "carton__nombres";
-    nombres.textContent = "Andrea & Cintia";
-
-    const fecha = document.createElement("p");
-    fecha.className = "carton__fecha";
-    fecha.textContent = "5 de septiembre de 2026";
-
-    cabecera.append(titulo, nombres, fecha);
+    cabecera.appendChild(titulo);
 
     const tabla = document.createElement("div");
     tabla.className = "tabla-bingo";
     tabla.setAttribute(
         "aria-label",
-        `Cartón de bingo número ${numeroCarton}`
+        "Cuadrícula de bingo"
     );
 
     const cantidadHuecos = carton
@@ -353,16 +341,7 @@ function crearElementoCarton(carton, numeroCarton) {
         }
     }
 
-    const pie = document.createElement("p");
-    pie.className = "carton__pie";
-    pie.textContent = "¡Que empiece el juego!";
-
-    articulo.append(
-        indicador,
-        cabecera,
-        tabla,
-        pie
-    );
+    articulo.append(cabecera, tabla);
 
     return articulo;
 }
@@ -420,10 +399,7 @@ function generarCartones() {
         clavesGeneradas.add(clave);
         cartonesCreados += 1;
 
-        const elemento = crearElementoCarton(
-            carton,
-            cartonesCreados
-        );
+        const elemento = crearElementoCarton(carton);
 
         contenedor.appendChild(elemento);
     }
