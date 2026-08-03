@@ -24,6 +24,34 @@ body {
     background: var(--crema);
 }
 
+.navegacion {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    width: fit-content;
+    margin: 18px auto 0;
+    padding: 5px;
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+    background: var(--blanco);
+    box-shadow: 0 4px 16px var(--sombra);
+}
+
+.navegacion__enlace {
+    min-width: 112px;
+    padding: 11px 18px;
+    border-radius: 999px;
+    color: var(--verde-oscuro);
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+}
+
+.navegacion__enlace--activo {
+    color: var(--blanco);
+    background: var(--verde);
+}
+
 .cabecera {
     padding: 32px 20px 24px;
     text-align: center;
