@@ -275,10 +275,12 @@ button:hover {
     }
 
     .carton {
-        width: 100%;
+        width: 160mm;
+        height: 80mm;
         max-width: none;
-        margin: 0 0 3mm;
+        margin: 0 auto 3mm;
         padding: 3mm;
+        box-sizing: border-box;
         border: 0.4mm solid var(--verde);
         border-radius: 3mm;
         box-shadow: none;
@@ -297,11 +299,11 @@ button:hover {
     }
 
     .carton__cabecera {
-        margin-bottom: 1.5mm;
+        margin-bottom: 1.2mm;
     }
 
     .carton__cabecera h2 {
-        font-size: 18pt;
+        font-size: 17pt;
         line-height: 1;
     }
 
@@ -311,7 +313,7 @@ button:hover {
 
     .casilla {
         aspect-ratio: auto;
-        height: 25.5mm;
+        height: 21.7mm;
         border-right-width: 0.35mm;
         border-bottom-width: 0.35mm;
     }
