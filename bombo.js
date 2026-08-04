@@ -1,13 +1,10 @@
 "use strict";
 
 const CLAVE_ESTADO = "bingo-boda-bombo-v1";
-const CLAVE_VOZ = "bingo-boda-voz-v1";
+const CLAVE_AUDIO = "bingo-boda-audio-v1";
+const CLAVE_VOZ_ANTIGUA = "bingo-boda-voz-v1";
 const TOTAL_BOLAS = 90;
 const INTERVALO_PREDETERMINADO = 5;
-const SPEECH_TIMEOUT = 12000;
-const PAUSA_IDIOMAS = 280;
-const VELOCIDADES = { slow: 0.85, normal: 1, lively: 1.12 };
-const TONOS = { normal: 1, fun: 1.15 };
 
 const elementos = {
     actual: document.getElementById("bolaActual"), anterior: document.getElementById("numeroAnterior"),
@@ -19,21 +16,19 @@ const elementos = {
     totalExtraidos: document.getElementById("totalExtraidos"), listaSalida: document.getElementById("listaSalida"),
     historialVacio: document.getElementById("historialVacio"), cuadricula: document.getElementById("cuadricula"),
     reiniciar: document.getElementById("reiniciar"), confirmacion: document.getElementById("confirmacion"),
-    controlesVoz: document.getElementById("controlesVoz"), avisoVoz: document.getElementById("avisoVoz"),
-    modoVoz: document.getElementById("modoVoz"), vozEspanola: document.getElementById("vozEspanola"),
-    vozItaliana: document.getElementById("vozItaliana"), velocidadVoz: document.getElementById("velocidadVoz"),
-    tonoVoz: document.getElementById("tonoVoz"), probarVoces: document.getElementById("probarVoces")
+    modoAudio: document.getElementById("modoAudio"), probarAudio: document.getElementById("probarAudio")
 };
 
-const vozDisponible = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+const reproductor = new Audio();
+reproductor.preload = "auto";
 let partida = cargarPartida();
-let preferenciasVoz = cargarPreferenciasVoz();
-let voces = [];
+let modoAudio = cargarModoAudio();
 let automaticoActivo = false;
 let temporizador = null;
 let bloqueoManual = false;
-let hablando = false;
-let cicloVoz = 0;
+let reproduciendo = false;
+let cicloAudio = 0;
+let resolverReproduccion = null;
 let wakeLock = null;
 
 function estadoInicial(intervalo = INTERVALO_PREDETERMINADO, extraidos = []) { return { extraidos: [...extraidos], intervalo }; }
@@ -47,108 +42,68 @@ function cargarPartida() {
     } catch (_error) { localStorage.removeItem(CLAVE_ESTADO); }
     return estadoInicial();
 }
-function cargarPreferenciasVoz() {
-    const iniciales = { modo: "es-it", vozEs: "", vozIt: "", velocidad: "normal", tono: "fun" };
+function cargarModoAudio() {
+    let modo = "es-it";
     try {
-        const datos = JSON.parse(localStorage.getItem(CLAVE_VOZ));
-        if (["es-it", "it-es", "es", "it", "off"].includes(datos?.modo)) iniciales.modo = datos.modo;
-        if (typeof datos?.vozEs === "string") iniciales.vozEs = datos.vozEs;
-        if (typeof datos?.vozIt === "string") iniciales.vozIt = datos.vozIt;
-        if (datos?.velocidad in VELOCIDADES) iniciales.velocidad = datos.velocidad;
-        if (datos?.tono in TONOS) iniciales.tono = datos.tono;
-    } catch (_error) { localStorage.removeItem(CLAVE_VOZ); }
-    return iniciales;
+        const datos = JSON.parse(localStorage.getItem(CLAVE_AUDIO));
+        if (["es-it", "it-es", "es", "it", "off"].includes(datos?.modo)) modo = datos.modo;
+    } catch (_error) { localStorage.removeItem(CLAVE_AUDIO); }
+    localStorage.removeItem(CLAVE_VOZ_ANTIGUA);
+    return modo;
 }
 function guardarPartida() { localStorage.setItem(CLAVE_ESTADO, JSON.stringify({ extraidos: partida.extraidos, intervalo: partida.intervalo })); }
-function guardarPreferenciasVoz() {
-    preferenciasVoz = { modo: elementos.modoVoz.value, vozEs: elementos.vozEspanola.value, vozIt: elementos.vozItaliana.value, velocidad: elementos.velocidadVoz.value, tono: elementos.tonoVoz.value };
-    localStorage.setItem(CLAVE_VOZ, JSON.stringify(preferenciasVoz));
+function guardarModoAudio() {
+    modoAudio = elementos.modoAudio.value;
+    localStorage.setItem(CLAVE_AUDIO, JSON.stringify({ modo: modoAudio }));
 }
 
-function obtenerVoces() {
-    if (!vozDisponible) return;
-    voces = window.speechSynthesis.getVoices();
-    rellenarSelectorVoz(elementos.vozEspanola, "es", preferenciasVoz.vozEs, "Automática (es-ES)");
-    rellenarSelectorVoz(elementos.vozItaliana, "it", preferenciasVoz.vozIt, "Automatica (it-IT)");
-}
-function rellenarSelectorVoz(selector, idioma, guardada, etiquetaAutomatica) {
-    const compatibles = voces.filter((voz) => voz.lang.toLowerCase().startsWith(idioma));
-    const automatica = new Option(etiquetaAutomatica, "");
-    selector.replaceChildren(automatica, ...compatibles.map((voz) => new Option(`${voz.name} (${voz.lang})`, voz.voiceURI)));
-    selector.value = compatibles.some((voz) => voz.voiceURI === guardada) ? guardada : "";
-}
-function vozPara(idioma) {
-    const uri = idioma === "es" ? preferenciasVoz.vozEs : preferenciasVoz.vozIt;
-    const manual = voces.find((voz) => voz.voiceURI === uri && voz.lang.toLowerCase().startsWith(idioma));
-    if (manual) return manual;
-    const exacta = voces.find((voz) => voz.lang.toLowerCase() === `${idioma}-${idioma === "es" ? "es" : "it"}`);
-    return exacta || voces.find((voz) => voz.lang.toLowerCase().startsWith(idioma));
-}
-
-const UNIDADES_ES = ["", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve"];
-const ESPECIALES_ES = ["diez", "once", "doce", "trece", "catorce", "quince", "dieciséis", "diecisiete", "dieciocho", "diecinueve", "veinte", "veintiuno", "veintidós", "veintitrés", "veinticuatro", "veinticinco", "veintiséis", "veintisiete", "veintiocho", "veintinueve"];
-const DECENAS_ES = ["", "", "", "treinta", "cuarenta", "cincuenta", "sesenta", "setenta", "ochenta", "noventa"];
-function numeroEspanol(numero) {
-    if (numero < 10) return UNIDADES_ES[numero];
-    if (numero < 30) return ESPECIALES_ES[numero - 10];
-    const decena = Math.floor(numero / 10); const unidad = numero % 10;
-    return DECENAS_ES[decena] + (unidad ? ` y ${UNIDADES_ES[unidad]}` : "");
-}
-const UNIDADES_IT = ["", "uno", "due", "tre", "quattro", "cinque", "sei", "sette", "otto", "nove"];
-const ESPECIALES_IT = ["dieci", "undici", "dodici", "tredici", "quattordici", "quindici", "sedici", "diciassette", "diciotto", "diciannove"];
-const DECENAS_IT = ["", "", "venti", "trenta", "quaranta", "cinquanta", "sessanta", "settanta", "ottanta", "novanta"];
-function numeroItaliano(numero) {
-    if (numero < 10) return UNIDADES_IT[numero];
-    if (numero < 20) return ESPECIALES_IT[numero - 10];
-    const decena = Math.floor(numero / 10); const unidad = numero % 10;
-    let base = DECENAS_IT[decena];
-    if (unidad === 1 || unidad === 8) base = base.slice(0, -1);
-    return base + UNIDADES_IT[unidad];
-}
 function idiomasActivos() {
-    return { "es-it": ["es", "it"], "it-es": ["it", "es"], es: ["es"], it: ["it"], off: [] }[preferenciasVoz.modo] || [];
+    return { "es-it": ["es", "it"], "it-es": ["it", "es"], es: ["es"], it: ["it"], off: [] }[modoAudio] || [];
 }
 function cancelarLocucion() {
-    cicloVoz += 1;
-    hablando = false;
-    if (vozDisponible) window.speechSynthesis.cancel();
+    cicloAudio += 1;
+    reproduciendo = false;
+    reproductor.pause();
+    if (resolverReproduccion) resolverReproduccion();
 }
-function decir(texto, idioma, ciclo) {
+function rutaAudio(numero, idioma) {
+    return `audio/${idioma}/${String(numero).padStart(3, "0")}.mp3`;
+}
+async function reproducirAudio(numero, idioma) {
     return new Promise((resolve) => {
-        if (!vozDisponible || ciclo !== cicloVoz) { resolve(); return; }
-        const utterance = new SpeechSynthesisUtterance(texto);
-        utterance.lang = idioma === "es" ? "es-ES" : "it-IT";
-        utterance.rate = VELOCIDADES[preferenciasVoz.velocidad];
-        utterance.pitch = TONOS[preferenciasVoz.tono];
-        const seleccionada = vozPara(idioma);
-        if (seleccionada) utterance.voice = seleccionada;
-        let resuelta = false;
-        const finalizar = () => { if (!resuelta) { resuelta = true; window.clearTimeout(seguridad); resolve(); } };
-        const seguridad = window.setTimeout(() => { window.speechSynthesis.cancel(); finalizar(); }, SPEECH_TIMEOUT);
-        utterance.onend = finalizar;
-        utterance.onerror = finalizar;
-        try { window.speechSynthesis.speak(utterance); } catch (_error) { finalizar(); }
+        let terminada = false;
+        const finalizar = (error) => {
+            if (terminada) return;
+            terminada = true;
+            reproductor.onended = null;
+            reproductor.onerror = null;
+            resolverReproduccion = null;
+            if (error) elementos.mensaje.textContent = `No se pudo reproducir ${rutaAudio(numero, idioma)}. La partida continúa.`;
+            resolve();
+        };
+        resolverReproduccion = () => finalizar(false);
+        reproductor.onended = () => finalizar(false);
+        reproductor.onerror = () => finalizar(true);
+        reproductor.src = rutaAudio(numero, idioma);
+        reproductor.load();
+        reproductor.play().catch(() => finalizar(true));
     });
 }
-function pausa(ms, ciclo) { return new Promise((resolve) => { if (ciclo !== cicloVoz) resolve(); else window.setTimeout(resolve, ms); }); }
-async function locutar(contenidos) {
-    if (!vozDisponible || !idiomasActivos().length) return;
+async function locutarNumero(numero) {
+    if (!idiomasActivos().length) return;
     cancelarLocucion();
-    const ciclo = cicloVoz;
-    hablando = true;
+    const ciclo = cicloAudio;
+    reproduciendo = true;
     actualizarControles();
-    const idiomas = idiomasActivos();
-    for (let indice = 0; indice < idiomas.length && ciclo === cicloVoz; indice += 1) {
-        const idioma = idiomas[indice];
-        await decir(contenidos[idioma], idioma, ciclo);
-        if (indice < idiomas.length - 1 && ciclo === cicloVoz) await pausa(PAUSA_IDIOMAS, ciclo);
+    for (const idioma of idiomasActivos()) {
+        if (ciclo !== cicloAudio) break;
+        await reproducirAudio(numero, idioma);
     }
-    if (ciclo === cicloVoz) { hablando = false; actualizarControles(); }
+    if (ciclo === cicloAudio) { reproduciendo = false; actualizarControles(); }
 }
-async function locutarNumero(numero) { await locutar({ es: numeroEspanol(numero), it: numeroItaliano(numero) }); }
-async function probarVoces() {
-    if (hablando) return;
-    await locutar({ es: "Bingo, prueba de voz", it: "Bingo, prova della voce" });
+async function probarAudio() {
+    if (reproduciendo) return;
+    await locutarNumero(1);
 }
 
 function extraerNumero() {
@@ -162,7 +117,7 @@ function extraerNumero() {
 }
 function animarBola() { elementos.actual.classList.remove("nueva"); void elementos.actual.offsetWidth; elementos.actual.classList.add("nueva"); }
 async function extraccionManual() {
-    if (bloqueoManual || automaticoActivo || hablando) return;
+    if (bloqueoManual || automaticoActivo || reproduciendo) return;
     bloqueoManual = true; actualizarControles();
     const numero = extraerNumero();
     if (numero !== null) await locutarNumero(numero);
@@ -225,14 +180,14 @@ function renderizarCuadricula() {
 }
 function actualizarControles(forzarEstado) {
     const terminada = partida.extraidos.length === TOTAL_BOLAS;
-    elementos.sacar.disabled = automaticoActivo || terminada || bloqueoManual || hablando;
-    elementos.iniciar.disabled = automaticoActivo || terminada || hablando;
+    elementos.sacar.disabled = automaticoActivo || terminada || bloqueoManual || reproduciendo;
+    elementos.iniciar.disabled = automaticoActivo || terminada || reproduciendo;
     elementos.iniciar.textContent = partida.extraidos.length && !terminada ? "Reanudar automático" : "Iniciar automático";
     elementos.pausar.disabled = !automaticoActivo; elementos.selectorIntervalo.disabled = automaticoActivo;
-    elementos.probarVoces.disabled = !vozDisponible || hablando || automaticoActivo || bloqueoManual;
-    if (automaticoActivo) mostrarEstado(hablando ? "Automático activo · hablando" : "Automático activo", "activo");
+    elementos.probarAudio.disabled = reproduciendo || automaticoActivo || bloqueoManual;
+    if (automaticoActivo) mostrarEstado(reproduciendo ? "Automático activo · reproduciendo" : "Automático activo", "activo");
     else if (terminada || forzarEstado === "terminado") { mostrarEstado("Partida terminada", "terminado"); elementos.cuentaAtras.textContent = "No quedan bolas"; }
-    else if (hablando) mostrarEstado("Locución en curso", "activo");
+    else if (reproduciendo) mostrarEstado("Audio en curso", "activo");
     else if (forzarEstado === "pausado" || partida.extraidos.length) { mostrarEstado("Pausado", "pausado"); elementos.cuentaAtras.textContent = "Automático pausado"; }
     else { mostrarEstado("Preparado", "preparado"); elementos.cuentaAtras.textContent = "Automático detenido"; }
 }
@@ -254,12 +209,10 @@ function reiniciarPartida() {
 async function solicitarWakeLock() { if (!("wakeLock" in navigator) || document.hidden) return; try { wakeLock = await navigator.wakeLock.request("screen"); } catch (_error) { wakeLock = null; } }
 async function liberarWakeLock() { if (!wakeLock) return; try { await wakeLock.release(); } catch (_error) { /* Ya liberado. */ } wakeLock = null; }
 
-function configurarVoz() {
-    elementos.modoVoz.value = preferenciasVoz.modo; elementos.velocidadVoz.value = preferenciasVoz.velocidad; elementos.tonoVoz.value = preferenciasVoz.tono;
-    if (!vozDisponible) { elementos.controlesVoz.disabled = true; elementos.avisoVoz.hidden = false; return; }
-    obtenerVoces(); window.speechSynthesis.addEventListener("voiceschanged", obtenerVoces);
-    [elementos.modoVoz, elementos.vozEspanola, elementos.vozItaliana, elementos.velocidadVoz, elementos.tonoVoz].forEach((control) => control.addEventListener("change", guardarPreferenciasVoz));
-    elementos.probarVoces.addEventListener("click", probarVoces);
+function configurarAudio() {
+    elementos.modoAudio.value = modoAudio;
+    elementos.modoAudio.addEventListener("change", guardarModoAudio);
+    elementos.probarAudio.addEventListener("click", probarAudio);
 }
 
 elementos.sacar.addEventListener("click", extraccionManual); elementos.iniciar.addEventListener("click", iniciarAutomatico); elementos.pausar.addEventListener("click", pausarAutomatico);
@@ -270,4 +223,4 @@ document.getElementById("tabSalida").addEventListener("click", () => cambiarVist
 document.addEventListener("visibilitychange", () => { if (document.hidden && automaticoActivo) pausarAutomatico(); });
 window.addEventListener("pagehide", () => { automaticoActivo = false; limpiarTemporizador(); cancelarLocucion(); liberarWakeLock(); });
 
-configurarVoz(); elementos.intervalo.value = partida.intervalo; marcarOpcionActiva(); renderizar();
+configurarAudio(); elementos.intervalo.value = partida.intervalo; marcarOpcionActiva(); renderizar();

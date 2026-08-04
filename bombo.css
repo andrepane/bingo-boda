@@ -129,7 +129,6 @@ main { width: calc(100% - 24px); max-width: 760px; margin: 0 auto 40px; }
 .campo-voz { display: grid; gap: 6px; }
 .campo-voz label { font-weight: bold; }
 .campo-voz select { width: 100%; min-height: 46px; padding: 8px 10px; border: 1px solid var(--borde); border-radius: 10px; color: var(--texto); background: var(--blanco); }
-.aviso-voz { margin: 0; padding: 0 14px 14px; color: var(--alerta); font-size: .92rem; }
 .automatico { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--verde-claro); }
 fieldset { margin: 0; padding: 0; border: 0; }
 legend { width: 100%; margin-bottom: 10px; font-weight: bold; }
