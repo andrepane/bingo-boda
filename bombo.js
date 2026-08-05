@@ -29,6 +29,7 @@ let bloqueoManual = false;
 let reproduciendo = false;
 let cicloAudio = 0;
 let resolverReproduccion = null;
+let vozItaliana = null;
 let wakeLock = null;
 
 function estadoInicial(intervalo = INTERVALO_PREDETERMINADO, extraidos = []) { return { extraidos: [...extraidos], intervalo }; }
@@ -65,29 +66,71 @@ function cancelarLocucion() {
     reproduciendo = false;
     reproductor.pause();
     if (resolverReproduccion) resolverReproduccion();
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 }
-function rutaAudio(numero, idioma) {
-    return `audio/${idioma}/${String(numero).padStart(3, "0")}.mp3`;
+function rutaAudioEspanol(numero) {
+    return `audio/es/${String(numero).padStart(3, "0")}.mp3`;
 }
-async function reproducirAudio(numero, idioma) {
+function actualizarVozItaliana() {
+    if (!("speechSynthesis" in window)) return;
+    vozItaliana = window.speechSynthesis.getVoices().find((voz) => voz.lang.toLowerCase().startsWith("it")) || null;
+}
+function capitalizar(texto) {
+    return texto ? `${texto[0].toUpperCase()}${texto.slice(1)}` : "";
+}
+function textoItaliano(numero) {
+    const unidades = ["", "uno", "due", "tre", "quattro", "cinque", "sei", "sette", "otto", "nove"];
+    const especiales = ["dieci", "undici", "dodici", "tredici", "quattordici", "quindici", "sedici", "diciassette", "diciotto", "diciannove"];
+    const decenas = ["", "", "venti", "trenta", "quaranta", "cinquanta", "sessanta", "settanta", "ottanta", "novanta"];
+    if (numero < 1 || numero > TOTAL_BOLAS) return "";
+    if (numero < 10) return capitalizar(unidades[numero]);
+    if (numero < 20) return capitalizar(especiales[numero - 10]);
+    const decena = Math.floor(numero / 10);
+    const unidad = numero % 10;
+    const base = decenas[decena];
+    const texto = unidad === 1 || unidad === 8 ? `${base.slice(0, -1)}${unidades[unidad]}` : `${base}${unidades[unidad]}`;
+    return capitalizar(texto);
+}
+async function reproducirAudioEspanol(numero) {
     return new Promise((resolve) => {
         let terminada = false;
+        const ruta = rutaAudioEspanol(numero);
         const finalizar = (error) => {
             if (terminada) return;
             terminada = true;
             reproductor.onended = null;
             reproductor.onerror = null;
             resolverReproduccion = null;
-            if (error) elementos.mensaje.textContent = `No se pudo reproducir ${rutaAudio(numero, idioma)}. La partida continúa.`;
+            if (error) elementos.mensaje.textContent = `No se pudo reproducir ${ruta}. La partida continúa.`;
             resolve();
         };
         resolverReproduccion = () => finalizar(false);
         reproductor.onended = () => finalizar(false);
         reproductor.onerror = () => finalizar(true);
-        reproductor.src = rutaAudio(numero, idioma);
+        reproductor.src = ruta;
         reproductor.load();
         reproductor.play().catch(() => finalizar(true));
     });
+}
+async function locutarNumeroItaliano(numero) {
+    if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return;
+    actualizarVozItaliana();
+    return new Promise((resolve) => {
+        const locucion = new SpeechSynthesisUtterance(`${textoItaliano(numero)}!`);
+        locucion.lang = "it-IT";
+        locucion.rate = 0.9;
+        locucion.pitch = 1;
+        locucion.volume = 1;
+        if (vozItaliana) locucion.voice = vozItaliana;
+        locucion.onend = resolve;
+        locucion.onerror = resolve;
+        resolverReproduccion = () => { window.speechSynthesis.cancel(); resolve(); };
+        window.speechSynthesis.speak(locucion);
+    }).finally(() => { resolverReproduccion = null; });
+}
+async function reproducirNumero(numero, idioma) {
+    if (idioma === "es") return reproducirAudioEspanol(numero);
+    if (idioma === "it") return locutarNumeroItaliano(numero);
 }
 async function locutarNumero(numero) {
     if (!idiomasActivos().length) return;
@@ -97,7 +140,7 @@ async function locutarNumero(numero) {
     actualizarControles();
     for (const idioma of idiomasActivos()) {
         if (ciclo !== cicloAudio) break;
-        await reproducirAudio(numero, idioma);
+        await reproducirNumero(numero, idioma);
     }
     if (ciclo === cicloAudio) { reproduciendo = false; actualizarControles(); }
 }
@@ -213,6 +256,8 @@ function configurarAudio() {
     elementos.modoAudio.value = modoAudio;
     elementos.modoAudio.addEventListener("change", guardarModoAudio);
     elementos.probarAudio.addEventListener("click", probarAudio);
+    actualizarVozItaliana();
+    if ("speechSynthesis" in window) window.speechSynthesis.addEventListener("voiceschanged", actualizarVozItaliana);
 }
 
 elementos.sacar.addEventListener("click", extraccionManual); elementos.iniciar.addEventListener("click", iniciarAutomatico); elementos.pausar.addEventListener("click", pausarAutomatico);
