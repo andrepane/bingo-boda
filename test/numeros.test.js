@@ -42,11 +42,12 @@ test("rechaza valores fuera del rango", () => {
 
 test("construye las frases sin aceptar texto libre", () => {
     assert.equal(crearTexto(13, "es"), "Número... ¡trece!");
-    assert.equal(crearTexto(13, "it"), "Tredici!");
+    assert.equal(crearTexto(13, "it"), "Numero... tredici!");
     assert.equal(crearTexto(22, "es"), "Número... ¡veintidós!");
-    assert.equal(crearTexto(22, "it"), "Ventidue!");
+    assert.equal(crearTexto(22, "it"), "Numero... ventidue!");
+    assert.equal(crearTexto(33, "it"), "Numero... trentatré!");
     assert.equal(crearTexto(83, "es"), "Número... ¡ochenta y tres!");
-    assert.equal(crearTexto(83, "it"), "Ottantatré!");
+    assert.equal(crearTexto(83, "it"), "Numero... ottantatré!");
 });
 
 test("valida estrictamente los parámetros del endpoint", () => {
