@@ -22,4 +22,4 @@ La web estática incluye el generador de cartones y el bombo digital. La locuci�
    - `/api/tts?numero=13&idioma=es`
    - `/api/tts?numero=13&idioma=it`
 
-Las voces predeterminadas son `es-ES-Neural2-A` e `it-IT-Wavenet-A`; las variables opcionales permiten sustituirlas sin cambiar el código.
+Las voces predeterminadas son `es-ES-Neural2-A` e `it-IT-Neural2-F`; las variables opcionales permiten sustituirlas sin cambiar el código.

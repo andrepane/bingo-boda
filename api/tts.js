@@ -5,7 +5,7 @@ const { validarConsulta, crearTexto } = require("../lib/tts");
 
 const CONFIGURACION = {
     es: { languageCode: "es-ES", voiceEnv: "GOOGLE_TTS_VOICE_ES", defaultVoice: "es-ES-Neural2-A" },
-    it: { languageCode: "it-IT", voiceEnv: "GOOGLE_TTS_VOICE_IT", defaultVoice: "it-IT-Wavenet-A" }
+    it: { languageCode: "it-IT", voiceEnv: "GOOGLE_TTS_VOICE_IT", defaultVoice: "it-IT-Neural2-F" }
 };
 
 function responderError(response, estado, mensaje) {

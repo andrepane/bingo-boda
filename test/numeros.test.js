@@ -2,8 +2,21 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const Module = require("node:module");
 const { numeroEnEspanol, numeroEnItaliano } = require("../lib/numeros");
 const { validarConsulta, crearTexto } = require("../lib/tts");
+
+const cargarConfiguracion = () => {
+    const cargarOriginal = Module._load;
+    try {
+        Module._load = (request, parent, isMain) => request === "@google-cloud/text-to-speech"
+            ? {}
+            : cargarOriginal(request, parent, isMain);
+        return require("../api/tts").CONFIGURACION;
+    } finally {
+        Module._load = cargarOriginal;
+    }
+};
 
 const casos = {
     1: ["uno", "uno"], 5: ["cinco", "cinque"], 6: ["seis", "sei"], 13: ["trece", "tredici"],
@@ -46,4 +59,11 @@ test("valida estrictamente los parámetros del endpoint", () => {
     ]) {
         assert.equal(validarConsulta(query), null);
     }
+});
+
+test("configura las voces predeterminadas válidas", () => {
+    const CONFIGURACION = cargarConfiguracion();
+    assert.equal(CONFIGURACION.es.defaultVoice, "es-ES-Neural2-A");
+    assert.equal(CONFIGURACION.it.defaultVoice, "it-IT-Neural2-F");
+    assert.equal(CONFIGURACION.it.languageCode, "it-IT");
 });
