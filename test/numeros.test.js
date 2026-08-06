@@ -50,12 +50,15 @@ test("construye las frases sin aceptar texto libre", () => {
 });
 
 test("valida estrictamente los parámetros del endpoint", () => {
-    assert.deepEqual(validarConsulta({ numero: "1", idioma: "es" }), { numero: 1, idioma: "es" });
-    assert.deepEqual(validarConsulta({ numero: "90", idioma: "it" }), { numero: 90, idioma: "it" });
+    assert.deepEqual(validarConsulta({ numero: "13", idioma: "es", v: "rasalgethi-v1" }), { numero: 13, idioma: "es" });
+    assert.deepEqual(validarConsulta({ numero: "90", idioma: "it", v: "rasalgethi-v1" }), { numero: 90, idioma: "it" });
     for (const query of [
-        { numero: "0", idioma: "es" }, { numero: "91", idioma: "it" },
-        { numero: "13", idioma: "fr" }, { numero: "13.0", idioma: "es" },
-        { numero: "13", idioma: "es", texto: "libre" }, { numero: ["13"], idioma: "es" }
+        { numero: "13", idioma: "es" }, { numero: "13", idioma: "es", v: "" },
+        { numero: "13", idioma: "es", v: "con espacios" }, { numero: "13", idioma: "es", v: "con/barra" },
+        { numero: "13", idioma: "es", v: "a".repeat(51) }, { numero: "13", idioma: "es", v: ["v1"] },
+        { numero: "0", idioma: "es", v: "v1" }, { numero: "91", idioma: "it", v: "v1" },
+        { numero: "13", idioma: "fr", v: "v1" }, { numero: "13.0", idioma: "es", v: "v1" },
+        { numero: "13", idioma: "es", v: "v1", texto: "libre" }, { numero: ["13"], idioma: "es", v: "v1" }
     ]) {
         assert.equal(validarConsulta(query), null);
     }
