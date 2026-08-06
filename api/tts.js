@@ -1,7 +1,7 @@
 "use strict";
 
 const textToSpeech = require("@google-cloud/text-to-speech");
-const { validarConsulta, crearTexto } = require("../lib/tts");
+const { validarConsulta, crearSsml } = require("../lib/tts");
 
 const CONFIGURACION = {
     es: { languageCode: "es-ES", voiceEnv: "GOOGLE_TTS_VOICE_ES", defaultVoice: "es-ES-Neural2-A" },
@@ -36,7 +36,7 @@ module.exports = async function tts(request, response) {
             projectId: credentials.project_id
         });
         const [result] = await client.synthesizeSpeech({
-            input: { text: crearTexto(numero, idioma) },
+            input: { ssml: crearSsml(numero, idioma) },
             voice: { languageCode: config.languageCode, name: process.env[config.voiceEnv] || config.defaultVoice },
             audioConfig: { audioEncoding: "MP3", speakingRate: 1, pitch: 0 }
         });

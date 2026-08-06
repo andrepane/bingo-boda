@@ -4,19 +4,22 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const Module = require("node:module");
 const { numeroEnEspanol, numeroEnItaliano } = require("../lib/numeros");
-const { validarConsulta, crearTexto } = require("../lib/tts");
+const { validarConsulta, crearSsml } = require("../lib/tts");
 
-const cargarConfiguracion = () => {
+const cargarApi = (textToSpeech = {}) => {
     const cargarOriginal = Module._load;
     try {
         Module._load = (request, parent, isMain) => request === "@google-cloud/text-to-speech"
-            ? {}
+            ? textToSpeech
             : cargarOriginal(request, parent, isMain);
-        return require("../api/tts").CONFIGURACION;
+        delete require.cache[require.resolve("../api/tts")];
+        return require("../api/tts");
     } finally {
         Module._load = cargarOriginal;
     }
 };
+
+const cargarConfiguracion = () => cargarApi().CONFIGURACION;
 
 const casos = {
     1: ["uno", "uno"], 5: ["cinco", "cinque"], 6: ["seis", "sei"], 13: ["trece", "tredici"],
@@ -40,13 +43,18 @@ test("rechaza valores fuera del rango", () => {
     }
 });
 
-test("construye las frases sin aceptar texto libre", () => {
-    assert.equal(crearTexto(13, "es"), "Número... ¡trece!");
-    assert.equal(crearTexto(13, "it"), "Tredici!");
-    assert.equal(crearTexto(22, "es"), "Número... ¡veintidós!");
-    assert.equal(crearTexto(22, "it"), "Ventidue!");
-    assert.equal(crearTexto(83, "es"), "Número... ¡ochenta y tres!");
-    assert.equal(crearTexto(83, "it"), "Ottantatré!");
+test("construye el SSML expresivo sin aceptar texto libre", () => {
+    const esperadoEspanol = (numero) => `<speak>Número<break time="500ms"/><prosody rate="105%" volume="+3dB">${numero}</prosody></speak>`;
+    const esperadoItaliano = (numero) => `<speak><prosody rate="105%" volume="+3dB">${numero}</prosody></speak>`;
+
+    assert.equal(crearSsml(5, "es"), esperadoEspanol("cinco"));
+    assert.equal(crearSsml(13, "es"), esperadoEspanol("trece"));
+    assert.equal(crearSsml(22, "es"), esperadoEspanol("veintidós"));
+    assert.equal(crearSsml(83, "es"), esperadoEspanol("ochenta y tres"));
+    assert.equal(crearSsml(5, "it"), esperadoItaliano("Cinque"));
+    assert.equal(crearSsml(13, "it"), esperadoItaliano("Tredici"));
+    assert.equal(crearSsml(23, "it"), esperadoItaliano("Ventitré"));
+    assert.equal(crearSsml(83, "it"), esperadoItaliano("Ottantatré"));
 });
 
 test("valida estrictamente los parámetros del endpoint", () => {
@@ -66,4 +74,58 @@ test("configura las voces predeterminadas válidas", () => {
     assert.equal(CONFIGURACION.es.defaultVoice, "es-ES-Neural2-A");
     assert.equal(CONFIGURACION.it.defaultVoice, "it-IT-Neural2-F");
     assert.equal(CONFIGURACION.it.languageCode, "it-IT");
+});
+
+test("envía únicamente SSML y respeta las voces configuradas", async () => {
+    const solicitudes = [];
+    class TextToSpeechClient {
+        async synthesizeSpeech(solicitud) {
+            solicitudes.push(solicitud);
+            return [{ audioContent: Buffer.from("audio") }];
+        }
+    }
+    const endpoint = cargarApi({ TextToSpeechClient });
+    const response = {
+        setHeader() {},
+        status(estado) { this.estado = estado; return this; },
+        send(audio) { this.audio = audio; return this; },
+        json(contenido) { this.contenido = contenido; return this; }
+    };
+    const entornoOriginal = {
+        credentials: process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64,
+        es: process.env.GOOGLE_TTS_VOICE_ES,
+        it: process.env.GOOGLE_TTS_VOICE_IT
+    };
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 = Buffer.from(JSON.stringify({
+        client_email: "test@example.com", private_key: "key", project_id: "project"
+    })).toString("base64");
+    process.env.GOOGLE_TTS_VOICE_ES = "es-ES-Chirp3-HD-Rasalgethi";
+    process.env.GOOGLE_TTS_VOICE_IT = "it-IT-Chirp3-HD-Rasalgethi";
+
+    try {
+        await endpoint({ method: "GET", query: { numero: "13", idioma: "es" } }, response);
+        await endpoint({ method: "GET", query: { numero: "13", idioma: "it" } }, response);
+    } finally {
+        for (const [variable, valor] of [
+            ["GOOGLE_SERVICE_ACCOUNT_JSON_BASE64", entornoOriginal.credentials],
+            ["GOOGLE_TTS_VOICE_ES", entornoOriginal.es],
+            ["GOOGLE_TTS_VOICE_IT", entornoOriginal.it]
+        ]) {
+            if (valor === undefined) delete process.env[variable];
+            else process.env[variable] = valor;
+        }
+    }
+
+    assert.deepEqual(solicitudes.map(({ input, voice, audioConfig }) => ({ input, voice, audioConfig })), [
+        {
+            input: { ssml: '<speak>Número<break time="500ms"/><prosody rate="105%" volume="+3dB">trece</prosody></speak>' },
+            voice: { languageCode: "es-ES", name: "es-ES-Chirp3-HD-Rasalgethi" },
+            audioConfig: { audioEncoding: "MP3", speakingRate: 1, pitch: 0 }
+        },
+        {
+            input: { ssml: '<speak><prosody rate="105%" volume="+3dB">Tredici</prosody></speak>' },
+            voice: { languageCode: "it-IT", name: "it-IT-Chirp3-HD-Rasalgethi" },
+            audioConfig: { audioEncoding: "MP3", speakingRate: 1, pitch: 0 }
+        }
+    ]);
 });
