@@ -1,6 +1,7 @@
 "use strict";
 
 const CLAVE_ESTADO = "bingo-boda-bombo-v1";
+const CLAVE_MODO_AUDIO = "bingo-boda-modo-audio";
 const TOTAL_BOLAS = 90;
 const INTERVALO_PREDETERMINADO = 5;
 
@@ -14,7 +15,7 @@ const elementos = {
     totalExtraidos: document.getElementById("totalExtraidos"), listaSalida: document.getElementById("listaSalida"),
     historialVacio: document.getElementById("historialVacio"), cuadricula: document.getElementById("cuadricula"),
     reiniciar: document.getElementById("reiniciar"), confirmacion: document.getElementById("confirmacion"),
-    probarAudio: document.getElementById("probarAudio")
+    probarAudio: document.getElementById("probarAudio"), modoAudio: document.getElementById("modoAudio")
 };
 
 let partida = cargarPartida();
@@ -24,6 +25,7 @@ let bloqueoManual = false;
 let reproduciendo = false;
 let cicloLocucion = 0;
 let resolverReproduccion = null;
+const reproductor = new Audio();
 let wakeLock = null;
 
 function estadoInicial(intervalo = INTERVALO_PREDETERMINADO, extraidos = []) { return { extraidos: [...extraidos], intervalo }; }
@@ -42,76 +44,34 @@ function guardarPartida() { localStorage.setItem(CLAVE_ESTADO, JSON.stringify({ 
 function cancelarLocucion() {
     cicloLocucion += 1;
     reproduciendo = false;
+    reproductor.pause(); reproductor.removeAttribute("src"); reproductor.load();
     if (resolverReproduccion) resolverReproduccion();
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    resolverReproduccion = null;
 }
-function capitalizar(texto) {
-    return texto ? `${texto[0].toUpperCase()}${texto.slice(1)}` : "";
-}
-function textoEspanol(numero) {
-    const unidades = ["", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve"];
-    const especiales = ["diez", "once", "doce", "trece", "catorce", "quince", "dieciséis", "diecisiete", "dieciocho", "diecinueve"];
-    const veintes = ["veinte", "veintiuno", "veintidós", "veintitrés", "veinticuatro", "veinticinco", "veintiséis", "veintisiete", "veintiocho", "veintinueve"];
-    const decenas = ["", "", "", "treinta", "cuarenta", "cincuenta", "sesenta", "setenta", "ochenta", "noventa"];
-    if (numero < 1 || numero > TOTAL_BOLAS) return "";
-    if (numero < 10) return unidades[numero];
-    if (numero < 20) return especiales[numero - 10];
-    if (numero < 30) return veintes[numero - 20];
-    const decena = Math.floor(numero / 10);
-    const unidad = numero % 10;
-    return unidad === 0 ? decenas[decena] : `${decenas[decena]} y ${unidades[unidad]}`;
-}
-function textoItaliano(numero) {
-    const unidades = ["", "uno", "due", "tre", "quattro", "cinque", "sei", "sette", "otto", "nove"];
-    const especiales = ["dieci", "undici", "dodici", "tredici", "quattordici", "quindici", "sedici", "diciassette", "diciotto", "diciannove"];
-    const decenas = ["", "", "venti", "trenta", "quaranta", "cinquanta", "sessanta", "settanta", "ottanta", "novanta"];
-    if (numero < 1 || numero > TOTAL_BOLAS) return "";
-    if (numero < 10) return capitalizar(unidades[numero]);
-    if (numero < 20) return capitalizar(especiales[numero - 10]);
-    const decena = Math.floor(numero / 10);
-    const unidad = numero % 10;
-    const base = decenas[decena];
-    const texto = unidad === 1 || unidad === 8 ? `${base.slice(0, -1)}${unidades[unidad]}` : `${base}${unidades[unidad]}`;
-    return capitalizar(texto);
-}
-function seleccionarVoz(idioma, preferida) {
-    if (!("speechSynthesis" in window)) return null;
-    const voces = window.speechSynthesis.getVoices().filter((voz) => voz.lang.toLowerCase().startsWith(idioma));
-    return voces.find((voz) => voz.lang.toLowerCase() === preferida) || voces[0] || null;
-}
-function crearLocucion(texto, idioma, voz) {
-    const locucion = new SpeechSynthesisUtterance(texto);
-    locucion.lang = idioma;
-    locucion.rate = 0.9;
-    locucion.pitch = 1;
-    locucion.volume = 1;
-    if (voz) locucion.voice = voz;
-    return locucion;
-}
-function hablar(texto, idioma, voz) {
-    return new Promise((resolve) => {
-        const locucion = crearLocucion(texto, idioma, voz);
-        locucion.onend = resolve;
-        locucion.onerror = resolve;
-        resolverReproduccion = () => { window.speechSynthesis.cancel(); resolve(); };
-        window.speechSynthesis.speak(locucion);
+function crearRutaTts(numero, idioma) { return `/api/tts?numero=${encodeURIComponent(numero)}&idioma=${idioma}`; }
+async function reproducirAudioTts(numero, idioma, ciclo) {
+    if (ciclo !== cicloLocucion) return;
+    reproductor.src = crearRutaTts(numero, idioma);
+    await new Promise((resolve, reject) => {
+        resolverReproduccion = resolve;
+        reproductor.onended = resolve;
+        reproductor.onerror = () => reject(new Error("No se pudo reproducir el audio"));
+        reproductor.play().catch(reject);
     });
+    resolverReproduccion = null;
 }
-async function speakNumber(numero) {
-    if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return;
+async function locutarNumero(numero) {
+    const modo = elementos.modoAudio.value;
+    if (modo === "off") return;
     cancelarLocucion();
     const ciclo = cicloLocucion;
     reproduciendo = true;
     actualizarControles();
-
-    const nombreEspanol = textoEspanol(numero);
-    const nombreItaliano = textoItaliano(numero);
-    const vozEspanola = seleccionarVoz("es", "es-es");
-    const vozItaliana = seleccionarVoz("it", "it-it");
-
     try {
-        await hablar(`Número... ¡${nombreEspanol}!`, "es-ES", vozEspanola);
-        if (ciclo === cicloLocucion && vozItaliana) await hablar(`${nombreItaliano}!`, "it-IT", vozItaliana);
+        if (modo === "es-it" || modo === "es") await reproducirAudioTts(numero, "es", ciclo);
+        if (ciclo === cicloLocucion && (modo === "es-it" || modo === "it")) await reproducirAudioTts(numero, "it", ciclo);
+    } catch (error) {
+        if (ciclo === cicloLocucion) elementos.mensaje.textContent = "No se ha podido reproducir el audio. La partida puede continuar.";
     } finally {
         resolverReproduccion = null;
         if (ciclo === cicloLocucion) { reproduciendo = false; actualizarControles(); }
@@ -119,7 +79,8 @@ async function speakNumber(numero) {
 }
 async function probarAudio() {
     if (reproduciendo) return;
-    await speakNumber(1);
+    elementos.mensaje.textContent = "";
+    await locutarNumero(13);
 }
 
 function extraerNumero() {
@@ -136,7 +97,7 @@ async function extraccionManual() {
     if (bloqueoManual || automaticoActivo || reproduciendo) return;
     bloqueoManual = true; actualizarControles();
     const numero = extraerNumero();
-    if (numero !== null) await speakNumber(numero);
+    if (numero !== null) await locutarNumero(numero);
     bloqueoManual = false; actualizarControles();
 }
 async function iniciarAutomatico() {
@@ -148,7 +109,7 @@ async function cicloAutomatico() {
     if (!automaticoActivo || document.hidden) return;
     const numero = extraerNumero();
     if (numero === null) return;
-    await speakNumber(numero);
+    await locutarNumero(numero);
     if (automaticoActivo && partida.extraidos.length < TOTAL_BOLAS) programarSiguiente(partida.intervalo);
 }
 function programarSiguiente(segundosRestantes) {
@@ -225,7 +186,13 @@ function reiniciarPartida() {
 async function solicitarWakeLock() { if (!("wakeLock" in navigator) || document.hidden) return; try { wakeLock = await navigator.wakeLock.request("screen"); } catch (_error) { wakeLock = null; } }
 async function liberarWakeLock() { if (!wakeLock) return; try { await wakeLock.release(); } catch (_error) { /* Ya liberado. */ } wakeLock = null; }
 
-function configurarVoz() {
+function configurarAudio() {
+    const modoGuardado = localStorage.getItem(CLAVE_MODO_AUDIO);
+    if (["es-it", "es", "it", "off"].includes(modoGuardado)) elementos.modoAudio.value = modoGuardado;
+    elementos.modoAudio.addEventListener("change", () => {
+        localStorage.setItem(CLAVE_MODO_AUDIO, elementos.modoAudio.value);
+        cancelarLocucion(); actualizarControles();
+    });
     elementos.probarAudio.addEventListener("click", probarAudio);
 }
 
@@ -237,4 +204,4 @@ document.getElementById("tabSalida").addEventListener("click", () => cambiarVist
 document.addEventListener("visibilitychange", () => { if (document.hidden && automaticoActivo) pausarAutomatico(); });
 window.addEventListener("pagehide", () => { automaticoActivo = false; limpiarTemporizador(); cancelarLocucion(); liberarWakeLock(); });
 
-configurarVoz(); elementos.intervalo.value = partida.intervalo; marcarOpcionActiva(); renderizar();
+configurarAudio(); elementos.intervalo.value = partida.intervalo; marcarOpcionActiva(); renderizar();
