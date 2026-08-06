@@ -1,13 +1,20 @@
 "use strict";
 
-const CACHE_APP = "bingo-app-v1";
+const VERSION_APP = "v2";
+const CACHE_APP = `bingo-app-${VERSION_APP}`;
 const RECURSOS_APP = ["/bombo.html", "/bombo.css", "/bombo.js", "/manifest.webmanifest", "/monograma.png"];
 
 self.addEventListener("install", (event) => {
     event.waitUntil(caches.open(CACHE_APP).then((cache) => cache.addAll(RECURSOS_APP)).then(() => self.skipWaiting()));
 });
 
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener("activate", (event) => {
+    event.waitUntil(caches.keys()
+        .then((nombres) => Promise.all(nombres
+            .filter((nombre) => nombre.startsWith("bingo-app-") && nombre !== CACHE_APP)
+            .map((nombre) => caches.delete(nombre))))
+        .then(() => self.clients.claim()));
+});
 
 // Solo se intercepta la interfaz del bombo; /api/tts permanece bajo el control explícito de bombo.js.
 self.addEventListener("fetch", (event) => {

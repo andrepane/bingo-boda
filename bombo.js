@@ -3,7 +3,8 @@
 const CLAVE_ESTADO = "bingo-boda-bombo-v1";
 const CLAVE_MODO_AUDIO = "bingo-boda-modo-audio";
 const CLAVE_MODO_OBTENCION = "bingo-boda-modo-obtencion";
-const CACHE_TTS = "bingo-tts-v1";
+const VERSION_AUDIO = "rasalgethi-v1";
+const CACHE_TTS = `bingo-tts-${VERSION_AUDIO}`;
 const TOTAL_AUDIOS = 180;
 const TOTAL_BOLAS = 90;
 const INTERVALO_PREDETERMINADO = 5;
@@ -60,7 +61,9 @@ function cancelarLocucion() {
     if (resolverReproduccion) resolverReproduccion();
     resolverReproduccion = null;
 }
-function crearRutaTts(numero, idioma) { return `/api/tts?numero=${encodeURIComponent(numero)}&idioma=${idioma}`; }
+function crearRutaTts(numero, idioma) {
+    return `/api/tts?numero=${encodeURIComponent(numero)}&idioma=${encodeURIComponent(idioma)}&v=${encodeURIComponent(VERSION_AUDIO)}`;
+}
 function rutasTts() {
     return ["es", "it"].flatMap((idioma) => Array.from({ length: TOTAL_BOLAS }, (_, i) => crearRutaTts(i + 1, idioma)));
 }
@@ -307,6 +310,14 @@ async function eliminarAudiosGuardados() {
     await actualizarEstadoAudios();
 }
 
+async function limpiarCachesTtsAntiguas() {
+    if (!("caches" in window)) return;
+    const nombres = await caches.keys();
+    await Promise.all(nombres
+        .filter((nombre) => nombre.startsWith("bingo-tts-") && nombre !== CACHE_TTS)
+        .map((nombre) => caches.delete(nombre)));
+}
+
 function configurarAudio() {
     const modoGuardado = localStorage.getItem(CLAVE_MODO_AUDIO);
     if (["es-it", "es", "it", "off"].includes(modoGuardado)) elementos.modoAudio.value = modoGuardado;
@@ -337,6 +348,11 @@ document.getElementById("tabSalida").addEventListener("click", () => cambiarVist
 document.addEventListener("visibilitychange", () => { if (document.hidden && automaticoActivo) pausarAutomatico(); });
 window.addEventListener("pagehide", () => { automaticoActivo = false; limpiarTemporizador(); cancelarLocucion(); liberarWakeLock(); });
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => { /* La aplicación sigue disponible sin registro PWA. */ });
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js")
+        .then((registro) => registro.update())
+        .catch(() => { /* La aplicación sigue disponible sin registro PWA. */ });
+}
 
+limpiarCachesTtsAntiguas().catch(() => { /* Una limpieza fallida no debe bloquear la interfaz. */ });
 configurarAudio(); elementos.intervalo.value = partida.intervalo; marcarOpcionActiva(); renderizar();
