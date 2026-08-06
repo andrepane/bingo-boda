@@ -2,6 +2,10 @@
 
 La web estática incluye el generador de cartones y el bombo digital. La locución del bombo se genera en el backend con Google Cloud Text-to-Speech; ninguna credencial se entrega al navegador.
 
+## Progressive Web App
+
+El manifest conserva `monograma.png` como icono de la aplicación. Para completar el soporte recomendado en Android aún hacen falta recursos dedicados de 192 × 192 y 512 × 512 píxeles, además de una variante *maskable* con el área segura adecuada. No se declaran rutas para esos recursos hasta disponer de los archivos reales, evitando que la instalación solicite imágenes inexistentes. En iPhone y iPad se utiliza mientras tanto `monograma.png` como `apple-touch-icon`.
+
 ## Despliegue en Vercel y configuración de Text-to-Speech
 
 1. Crea un proyecto en Google Cloud, activa Text-to-Speech y crea una cuenta de servicio con el permiso mínimo necesario.
