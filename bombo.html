@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667254">
+    <link rel="manifest" href="manifest.webmanifest">
     <title>Bombo digital | Bingo Andrea &amp; Cintia</title>
     <link rel="stylesheet" href="bombo.css">
 </head>
@@ -51,6 +52,24 @@
                             <option value="off">Sin audio</option>
                         </select>
                     </div>
+                    <fieldset class="obtencion-audio campo-voz--ancho">
+                        <legend>Modo de obtención</legend>
+                        <label><input type="radio" name="modoObtencion" value="streaming" checked> Streaming</label>
+                        <label><input type="radio" name="modoObtencion" value="offline"> Sin conexión</label>
+                        <small>Streaming usa Google Cloud cuando es necesario. Sin conexión solo utiliza audios almacenados.</small>
+                    </fieldset>
+                    <section class="audios-offline campo-voz--ancho" aria-labelledby="tituloEstadoAudio">
+                        <h3 id="tituloEstadoAudio">Estado</h3>
+                        <p id="contadorAudios">Comprobando audios guardados…</p>
+                        <progress id="progresoAudios" max="180" value="0">0 / 180</progress>
+                        <p id="estadoAudios" class="estado-audios" role="status" aria-live="polite"></p>
+                        <div class="acciones-audio">
+                            <button id="prepararAudios" class="boton" type="button">Preparar audios</button>
+                            <button id="completarAudios" class="boton boton-secundario" type="button">Completar descarga</button>
+                            <button id="cancelarDescarga" class="boton boton-secundario" type="button" hidden>Cancelar descarga</button>
+                            <button id="eliminarAudios" class="boton boton-secundario" type="button">Eliminar audios guardados</button>
+                        </div>
+                    </section>
                     <button id="probarAudio" class="boton campo-voz--ancho" type="button">Probar audio</button>
                 </fieldset>
             </details>

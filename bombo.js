@@ -2,6 +2,9 @@
 
 const CLAVE_ESTADO = "bingo-boda-bombo-v1";
 const CLAVE_MODO_AUDIO = "bingo-boda-modo-audio";
+const CLAVE_MODO_OBTENCION = "bingo-boda-modo-obtencion";
+const CACHE_TTS = "bingo-tts-v1";
+const TOTAL_AUDIOS = 180;
 const TOTAL_BOLAS = 90;
 const INTERVALO_PREDETERMINADO = 5;
 
@@ -15,7 +18,12 @@ const elementos = {
     totalExtraidos: document.getElementById("totalExtraidos"), listaSalida: document.getElementById("listaSalida"),
     historialVacio: document.getElementById("historialVacio"), cuadricula: document.getElementById("cuadricula"),
     reiniciar: document.getElementById("reiniciar"), confirmacion: document.getElementById("confirmacion"),
-    probarAudio: document.getElementById("probarAudio"), modoAudio: document.getElementById("modoAudio")
+    probarAudio: document.getElementById("probarAudio"), modoAudio: document.getElementById("modoAudio"),
+    modosObtencion: document.querySelectorAll('[name="modoObtencion"]'),
+    contadorAudios: document.getElementById("contadorAudios"), progresoAudios: document.getElementById("progresoAudios"),
+    estadoAudios: document.getElementById("estadoAudios"), prepararAudios: document.getElementById("prepararAudios"),
+    completarAudios: document.getElementById("completarAudios"), cancelarDescarga: document.getElementById("cancelarDescarga"),
+    eliminarAudios: document.getElementById("eliminarAudios")
 };
 
 let partida = cargarPartida();
@@ -27,6 +35,8 @@ let cicloLocucion = 0;
 let resolverReproduccion = null;
 const reproductor = new Audio();
 let wakeLock = null;
+let descargaActiva = null;
+let urlAudioActual = null;
 
 function estadoInicial(intervalo = INTERVALO_PREDETERMINADO, extraidos = []) { return { extraidos: [...extraidos], intervalo }; }
 function validarIntervalo(valor) { const numero = Number(valor); return Number.isInteger(numero) && numero >= 1 && numero <= 300 ? numero : null; }
@@ -45,20 +55,55 @@ function cancelarLocucion() {
     cicloLocucion += 1;
     reproduciendo = false;
     reproductor.pause(); reproductor.removeAttribute("src"); reproductor.load();
+    if (urlAudioActual) URL.revokeObjectURL(urlAudioActual);
+    urlAudioActual = null;
     if (resolverReproduccion) resolverReproduccion();
     resolverReproduccion = null;
 }
 function crearRutaTts(numero, idioma) { return `/api/tts?numero=${encodeURIComponent(numero)}&idioma=${idioma}`; }
+function rutasTts() {
+    return ["es", "it"].flatMap((idioma) => Array.from({ length: TOTAL_BOLAS }, (_, i) => crearRutaTts(i + 1, idioma)));
+}
+function modoObtencion() { return document.querySelector('[name="modoObtencion"]:checked')?.value || "streaming"; }
+async function obtenerAudioTts(ruta) {
+    if (!("caches" in window)) {
+        if (modoObtencion() === "offline") return null;
+        const respuesta = await fetch(ruta);
+        if (!respuesta.ok) throw new Error("No se pudo descargar el audio");
+        return respuesta;
+    }
+    const cache = await caches.open(CACHE_TTS);
+    const guardada = await cache.match(ruta);
+    if (guardada) return guardada;
+    if (modoObtencion() === "offline") return null;
+    const respuesta = await fetch(ruta);
+    if (!respuesta.ok) throw new Error("No se pudo descargar el audio");
+    await cache.put(ruta, respuesta.clone());
+    actualizarEstadoAudios();
+    return respuesta;
+}
 async function reproducirAudioTts(numero, idioma, ciclo) {
     if (ciclo !== cicloLocucion) return;
-    reproductor.src = crearRutaTts(numero, idioma);
-    await new Promise((resolve, reject) => {
-        resolverReproduccion = resolve;
-        reproductor.onended = resolve;
-        reproductor.onerror = () => reject(new Error("No se pudo reproducir el audio"));
-        reproductor.play().catch(reject);
-    });
-    resolverReproduccion = null;
+    const respuesta = await obtenerAudioTts(crearRutaTts(numero, idioma));
+    if (!respuesta) {
+        elementos.mensaje.textContent = "Audio no disponible sin conexión.";
+        return;
+    }
+    const urlObjeto = URL.createObjectURL(await respuesta.blob());
+    urlAudioActual = urlObjeto;
+    reproductor.src = urlObjeto;
+    try {
+        await new Promise((resolve, reject) => {
+            resolverReproduccion = resolve;
+            reproductor.onended = resolve;
+            reproductor.onerror = () => reject(new Error("No se pudo reproducir el audio"));
+            reproductor.play().catch(reject);
+        });
+    } finally {
+        URL.revokeObjectURL(urlObjeto);
+        if (urlAudioActual === urlObjeto) urlAudioActual = null;
+        resolverReproduccion = null;
+    }
 }
 async function locutarNumero(numero) {
     const modo = elementos.modoAudio.value;
@@ -186,6 +231,82 @@ function reiniciarPartida() {
 async function solicitarWakeLock() { if (!("wakeLock" in navigator) || document.hidden) return; try { wakeLock = await navigator.wakeLock.request("screen"); } catch (_error) { wakeLock = null; } }
 async function liberarWakeLock() { if (!wakeLock) return; try { await wakeLock.release(); } catch (_error) { /* Ya liberado. */ } wakeLock = null; }
 
+function mostrarEstadoAudios(preparados, descargando = false, procesados = 0) {
+    elementos.progresoAudios.value = preparados;
+    elementos.contadorAudios.textContent = descargando
+        ? `Descargando… ${procesados} / ${TOTAL_AUDIOS}`
+        : `${preparados} / ${TOTAL_AUDIOS} audios preparados`;
+    const faltan = TOTAL_AUDIOS - preparados;
+    elementos.estadoAudios.textContent = faltan === 0 ? "🟢 Listo para jugar sin conexión" : `🟡 Faltan ${faltan} audios`;
+}
+async function contarAudiosGuardados(cache) {
+    const coincidencias = await Promise.all(rutasTts().map((ruta) => cache.match(ruta)));
+    return coincidencias.filter(Boolean).length;
+}
+async function actualizarEstadoAudios() {
+    if (!("caches" in window)) {
+        elementos.contadorAudios.textContent = "Cache Storage no está disponible";
+        elementos.estadoAudios.textContent = "🟡 No se pueden guardar audios en este navegador";
+        return 0;
+    }
+    const cache = await caches.open(CACHE_TTS);
+    const preparados = await contarAudiosGuardados(cache);
+    mostrarEstadoAudios(preparados);
+    return preparados;
+}
+function bloquearGestionAudios(descargando) {
+    elementos.prepararAudios.disabled = descargando;
+    elementos.completarAudios.disabled = descargando;
+    elementos.eliminarAudios.disabled = descargando;
+    elementos.cancelarDescarga.hidden = !descargando;
+}
+async function descargarAudiosFaltantes() {
+    if (descargaActiva || !("caches" in window)) return;
+    const cache = await caches.open(CACHE_TTS);
+    const comprobaciones = await Promise.all(rutasTts().map(async (ruta) => ({ ruta, existe: Boolean(await cache.match(ruta)) })));
+    const pendientes = comprobaciones.filter(({ existe }) => !existe).map(({ ruta }) => ruta);
+    let preparados = TOTAL_AUDIOS - pendientes.length;
+    let procesados = preparados;
+    const control = { cancelada: false, controllers: new Set() };
+    descargaActiva = control;
+    bloquearGestionAudios(true);
+    mostrarEstadoAudios(preparados, true, procesados);
+    let indice = 0;
+    async function trabajador() {
+        while (!control.cancelada) {
+            const actual = indice++;
+            if (actual >= pendientes.length) return;
+            const controller = new AbortController();
+            control.controllers.add(controller);
+            try {
+                const respuesta = await fetch(pendientes[actual], { signal: controller.signal });
+                if (!respuesta.ok) throw new Error("Respuesta de audio no válida");
+                await cache.put(pendientes[actual], respuesta);
+                preparados += 1;
+            } catch (_error) { /* Un fallo no debe detener las demás descargas. */ }
+            finally {
+                control.controllers.delete(controller);
+                procesados += 1;
+                mostrarEstadoAudios(preparados, true, Math.min(procesados, TOTAL_AUDIOS));
+            }
+        }
+    }
+    await Promise.all(Array.from({ length: Math.min(4, pendientes.length) }, trabajador));
+    if (descargaActiva === control) descargaActiva = null;
+    bloquearGestionAudios(false);
+    await actualizarEstadoAudios();
+}
+function cancelarDescargaAudios() {
+    if (!descargaActiva) return;
+    descargaActiva.cancelada = true;
+    descargaActiva.controllers.forEach((controller) => controller.abort());
+}
+async function eliminarAudiosGuardados() {
+    if (!("caches" in window) || !window.confirm("¿Eliminar los audios guardados para jugar sin conexión?")) return;
+    await caches.delete(CACHE_TTS);
+    await actualizarEstadoAudios();
+}
+
 function configurarAudio() {
     const modoGuardado = localStorage.getItem(CLAVE_MODO_AUDIO);
     if (["es-it", "es", "it", "off"].includes(modoGuardado)) elementos.modoAudio.value = modoGuardado;
@@ -194,6 +315,18 @@ function configurarAudio() {
         cancelarLocucion(); actualizarControles();
     });
     elementos.probarAudio.addEventListener("click", probarAudio);
+    const obtencionGuardada = localStorage.getItem(CLAVE_MODO_OBTENCION);
+    const modoInicial = ["streaming", "offline"].includes(obtencionGuardada) ? obtencionGuardada : "streaming";
+    const radioInicial = document.querySelector(`[name="modoObtencion"][value="${modoInicial}"]`);
+    if (radioInicial) radioInicial.checked = true;
+    elementos.modosObtencion.forEach((radio) => radio.addEventListener("change", () => {
+        if (radio.checked) localStorage.setItem(CLAVE_MODO_OBTENCION, radio.value);
+    }));
+    elementos.prepararAudios.addEventListener("click", descargarAudiosFaltantes);
+    elementos.completarAudios.addEventListener("click", descargarAudiosFaltantes);
+    elementos.cancelarDescarga.addEventListener("click", cancelarDescargaAudios);
+    elementos.eliminarAudios.addEventListener("click", eliminarAudiosGuardados);
+    actualizarEstadoAudios();
 }
 
 elementos.sacar.addEventListener("click", extraccionManual); elementos.iniciar.addEventListener("click", iniciarAutomatico); elementos.pausar.addEventListener("click", pausarAutomatico);
@@ -203,5 +336,7 @@ document.querySelectorAll(".opcion").forEach((boton) => boton.addEventListener("
 document.getElementById("tabSalida").addEventListener("click", () => cambiarVista(false)); document.getElementById("tabNumerico").addEventListener("click", () => cambiarVista(true));
 document.addEventListener("visibilitychange", () => { if (document.hidden && automaticoActivo) pausarAutomatico(); });
 window.addEventListener("pagehide", () => { automaticoActivo = false; limpiarTemporizador(); cancelarLocucion(); liberarWakeLock(); });
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => { /* La aplicación sigue disponible sin registro PWA. */ });
 
 configurarAudio(); elementos.intervalo.value = partida.intervalo; marcarOpcionActiva(); renderizar();
