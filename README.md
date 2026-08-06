@@ -23,3 +23,16 @@ La web estática incluye el generador de cartones y el bombo digital. La locuci�
    - `/api/tts?numero=13&idioma=it`
 
 Las voces predeterminadas son `es-ES-Neural2-A` e `it-IT-Neural2-F`; las variables opcionales permiten sustituirlas sin cambiar el código.
+
+## Audio sin conexión
+
+El apartado **Audio del bingo** permite preparar los 180 audios (90 en español y 90 en italiano) en la caché `bingo-tts-v1`. El modo **Streaming** busca primero en esa caché y guarda automáticamente cualquier audio nuevo; el modo **Sin conexión** nunca consulta el backend y continúa la partida aunque falte un audio.
+
+Para probarlo en el navegador:
+
+1. Abre `bombo.html` mediante HTTPS (o `localhost`), despliega **Audio del bingo** y pulsa **Preparar audios**.
+2. Espera a que el estado indique `180 / 180 audios preparados`.
+3. En DevTools, abre **Application → Cache Storage → bingo-tts-v1** y comprueba las 180 entradas.
+4. Selecciona **Sin conexión** y activa **Network → Offline**. Extrae números o usa el modo automático: las locuciones almacenadas seguirán reproduciéndose.
+5. Vuelve a estar online, elimina una entrada desde Cache Storage y pulsa **Completar descarga** para verificar que solo se recupera la ausente.
+6. Pulsa **Eliminar audios guardados**, confirma la acción y comprueba que únicamente desaparece `bingo-tts-v1`.

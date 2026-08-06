@@ -1,0 +1,15 @@
+{
+  "name": "Bingo Andrea & Cintia",
+  "short_name": "Bingo boda",
+  "start_url": "/bombo.html",
+  "display": "standalone",
+  "background_color": "#faf8f1",
+  "theme_color": "#667254",
+  "icons": [
+    {
+      "src": "/monograma.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
