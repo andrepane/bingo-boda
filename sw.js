@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION_APP = "v3";
+const VERSION_APP = "v4";
 const CACHE_APP = `bingo-app-${VERSION_APP}`;
 const RECURSOS_APP = ["/bombo.html", "/bombo.css", "/bombo.js", "/manifest.webmanifest", "/monograma.png"];
 

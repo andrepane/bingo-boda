@@ -8,6 +8,15 @@ const CONFIGURACION = {
     it: { languageCode: "it-IT", voiceEnv: "GOOGLE_TTS_VOICE_IT", defaultVoice: "it-IT-Neural2-F" }
 };
 
+function crearSolicitudSintesis(consulta) {
+    const config = CONFIGURACION[consulta.idioma];
+    return {
+        input: { text: crearTexto(consulta, consulta.idioma) },
+        voice: { languageCode: config.languageCode, name: process.env[config.voiceEnv] || config.defaultVoice },
+        audioConfig: { audioEncoding: "MP3", speakingRate: 1, pitch: 0 }
+    };
+}
+
 function responderError(response, estado, mensaje) {
     response.status(estado).json({ error: mensaje });
 }
@@ -19,8 +28,7 @@ module.exports = async function tts(request, response) {
     }
 
     const consulta = validarConsulta(request.query);
-    if (!consulta) return responderError(response, 400, "Parámetros no válidos");
-    const { numero, idioma } = consulta;
+    if (!consulta) return responderError(response, 400, "Parámetros no válidos: indique exactamente un número (1-90) o un evento (linea/bingo), idioma es/it y versión");
 
     try {
         const base64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64;
@@ -30,16 +38,11 @@ module.exports = async function tts(request, response) {
             return responderError(response, 500, "Servicio de audio no configurado");
         }
 
-        const config = CONFIGURACION[idioma];
         const client = new textToSpeech.TextToSpeechClient({
             credentials: { client_email: credentials.client_email, private_key: credentials.private_key },
             projectId: credentials.project_id
         });
-        const [result] = await client.synthesizeSpeech({
-            input: { text: crearTexto(numero, idioma) },
-            voice: { languageCode: config.languageCode, name: process.env[config.voiceEnv] || config.defaultVoice },
-            audioConfig: { audioEncoding: "MP3", speakingRate: 1, pitch: 0 }
-        });
+        const [result] = await client.synthesizeSpeech(crearSolicitudSintesis(consulta));
 
         response.setHeader("Content-Type", "audio/mpeg");
         response.setHeader("Cache-Control", "public, s-maxage=31536000, stale-while-revalidate=86400");
@@ -53,3 +56,4 @@ module.exports = async function tts(request, response) {
 };
 
 module.exports.CONFIGURACION = CONFIGURACION;
+module.exports.crearSolicitudSintesis = crearSolicitudSintesis;
