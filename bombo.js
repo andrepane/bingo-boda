@@ -3,10 +3,9 @@
 const CLAVE_ESTADO = "bingo-boda-bombo-v1";
 const CLAVE_MODO_AUDIO = "bingo-boda-modo-audio";
 const CLAVE_MODO_OBTENCION = "bingo-boda-modo-obtencion";
-const CLAVE_CONFIG_AVISOS = "bingo-boda-config-avisos";
-const VERSION_AUDIO = "rasalgethi-v1";
+const VERSION_AUDIO = "rasalgethi-v2";
 const CACHE_TTS = `bingo-tts-${VERSION_AUDIO}`;
-const TOTAL_AUDIOS = 180;
+const TOTAL_AUDIOS = 184;
 const TOTAL_BOLAS = 90;
 const INTERVALO_PREDETERMINADO = 5;
 
@@ -30,9 +29,7 @@ const elementos = {
     confirmaciones: document.getElementById("confirmaciones"), avisoJugada: document.getElementById("avisoJugada"),
     tituloAviso: document.getElementById("tituloAviso"), textoAviso: document.getElementById("textoAviso"),
     iconoAviso: document.getElementById("iconoAviso"), confirmarJugada: document.getElementById("confirmarJugada"),
-    falsaAlarma: document.getElementById("falsaAlarma"), vozEspanol: document.getElementById("vozEspanol"),
-    vozItaliano: document.getElementById("vozItaliano"), velocidadVoz: document.getElementById("velocidadVoz"),
-    tonoVoz: document.getElementById("tonoVoz")
+    falsaAlarma: document.getElementById("falsaAlarma")
 };
 
 let partida = cargarPartida();
@@ -79,13 +76,18 @@ function cancelarLocucion() {
     if (resolverReproduccion) resolverReproduccion();
     resolverReproduccion = null;
     anunciandoJugada = false;
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 function crearRutaTts(numero, idioma) {
     return `/api/tts?numero=${encodeURIComponent(numero)}&idioma=${encodeURIComponent(idioma)}&v=${encodeURIComponent(VERSION_AUDIO)}`;
 }
+function crearRutaEventoTts(evento, idioma) {
+    return `/api/tts?evento=${encodeURIComponent(evento)}&idioma=${encodeURIComponent(idioma)}&v=${encodeURIComponent(VERSION_AUDIO)}`;
+}
 function rutasTts() {
-    return ["es", "it"].flatMap((idioma) => Array.from({ length: TOTAL_BOLAS }, (_, i) => crearRutaTts(i + 1, idioma)));
+    return ["es", "it"].flatMap((idioma) => [
+        ...Array.from({ length: TOTAL_BOLAS }, (_, i) => crearRutaTts(i + 1, idioma)),
+        crearRutaEventoTts("linea", idioma), crearRutaEventoTts("bingo", idioma)
+    ]);
 }
 function modoObtencion() { return document.querySelector('[name="modoObtencion"]:checked')?.value || "streaming"; }
 async function obtenerAudioTts(ruta) {
@@ -105,14 +107,16 @@ async function obtenerAudioTts(ruta) {
     actualizarEstadoAudios();
     return respuesta;
 }
-async function reproducirAudioTts(numero, idioma, ciclo) {
+async function reproducirRutaTts(ruta, ciclo) {
     if (ciclo !== cicloLocucion) return;
-    const respuesta = await obtenerAudioTts(crearRutaTts(numero, idioma));
+    const respuesta = await obtenerAudioTts(ruta);
     if (!respuesta) {
         elementos.mensaje.textContent = "Audio no disponible sin conexión.";
         return;
     }
-    const urlObjeto = URL.createObjectURL(await respuesta.blob());
+    const blob = await respuesta.blob();
+    if (ciclo !== cicloLocucion) return;
+    const urlObjeto = URL.createObjectURL(blob);
     urlAudioActual = urlObjeto;
     reproductor.src = urlObjeto;
     try {
@@ -129,16 +133,18 @@ async function reproducirAudioTts(numero, idioma, ciclo) {
     }
 }
 async function locutarNumero(numero) {
-    const modo = elementos.modoAudio.value;
-    if (modo === "off") return;
+    const idiomas = secuenciaIdiomas();
+    if (!idiomas.length) return;
     cancelarLocucion();
     const ciclo = cicloLocucion;
     reproduciendo = true;
     actualizarControles();
     try {
-        if (modo === "es-it" || modo === "es") await reproducirAudioTts(numero, "es", ciclo);
-        if (ciclo === cicloLocucion && (modo === "es-it" || modo === "it")) await reproducirAudioTts(numero, "it", ciclo);
-    } catch (error) {
+        for (const idioma of idiomas) {
+            if (ciclo !== cicloLocucion) break;
+            await reproducirRutaTts(crearRutaTts(numero, idioma), ciclo);
+        }
+    } catch (_error) {
         if (ciclo === cicloLocucion) elementos.mensaje.textContent = "No se ha podido reproducir el audio. La partida puede continuar.";
     } finally {
         resolverReproduccion = null;
@@ -153,36 +159,25 @@ async function probarAudio() {
 
 const textosJugada = {
     linea: { es: "¡Han cantado línea!", it: "Hanno fatto cinquina!", icono: "〰", confirmar: "Confirmar línea" },
-    bingo: { es: "¡Han cantado bingo!", it: "Hanno fatto tombola!", icono: "★", confirmar: "Confirmar bingo" }
+    bingo: { es: "¡Han cantado bingo!", it: "Hanno fatto bingo!", icono: "★", confirmar: "Confirmar bingo" }
 };
 function secuenciaIdiomas() {
     return { "es-it": ["es", "it"], "it-es": ["it", "es"], es: ["es"], it: ["it"], off: [] }[elementos.modoAudio.value] || [];
 }
-function vozSeleccionada(idioma) {
-    if (!("speechSynthesis" in window)) return null;
-    const nombre = idioma === "es" ? elementos.vozEspanol.value : elementos.vozItaliano.value;
-    return window.speechSynthesis.getVoices().find((voz) => voz.name === nombre) || null;
-}
-function pronunciarFrase(texto, idioma, ciclo) {
-    return new Promise((resolve) => {
-        if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window) || ciclo !== cicloLocucion) return resolve();
-        const locucion = new SpeechSynthesisUtterance(texto);
-        locucion.lang = idioma === "es" ? "es-ES" : "it-IT";
-        locucion.voice = vozSeleccionada(idioma);
-        locucion.rate = Number(elementos.velocidadVoz.value) || 1;
-        locucion.pitch = Number(elementos.tonoVoz.value) || 1;
-        locucion.onend = resolve; locucion.onerror = resolve;
-        window.speechSynthesis.speak(locucion);
-    });
-}
 async function anunciarJugada(tipo) {
     const ciclo = cicloLocucion;
     anunciandoJugada = true;
-    for (const idioma of secuenciaIdiomas()) {
-        if (ciclo !== cicloLocucion || partida.avisoPendiente !== tipo) break;
-        await pronunciarFrase(textosJugada[tipo][idioma], idioma, ciclo);
+    reproduciendo = true;
+    actualizarControles();
+    try {
+        for (const idioma of secuenciaIdiomas()) {
+            if (ciclo !== cicloLocucion || partida.avisoPendiente !== tipo) break;
+            await reproducirRutaTts(crearRutaEventoTts(tipo, idioma), ciclo);
+        }
+    } catch (_error) {
+        if (ciclo === cicloLocucion) elementos.mensaje.textContent = "No se ha podido reproducir el aviso. La partida puede continuar.";
     }
-    if (ciclo === cicloLocucion) anunciandoJugada = false;
+    if (ciclo === cicloLocucion) { anunciandoJugada = false; reproduciendo = false; actualizarControles(); }
 }
 function detenerParaComprobar() {
     automaticoActivo = false; limpiarTemporizador(); cancelarLocucion(); liberarWakeLock();
@@ -433,24 +428,6 @@ function configurarAudio() {
     elementos.completarAudios.addEventListener("click", descargarAudiosFaltantes);
     elementos.cancelarDescarga.addEventListener("click", cancelarDescargaAudios);
     elementos.eliminarAudios.addEventListener("click", eliminarAudiosGuardados);
-    let configAvisos = {};
-    try { configAvisos = JSON.parse(localStorage.getItem(CLAVE_CONFIG_AVISOS)) || {}; } catch (_error) { /* Usa valores predeterminados. */ }
-    elementos.velocidadVoz.value = configAvisos.velocidad || "1"; elementos.tonoVoz.value = configAvisos.tono || "1";
-    function cargarVoces() {
-        if (!("speechSynthesis" in window)) return;
-        const voces = window.speechSynthesis.getVoices();
-        [[elementos.vozEspanol, "es", configAvisos.vozEs], [elementos.vozItaliano, "it", configAvisos.vozIt]].forEach(([select, idioma, elegida]) => {
-            const anterior = select.value || elegida || "";
-            select.replaceChildren(new Option("Voz predeterminada", ""), ...voces.filter((voz) => voz.lang.toLowerCase().startsWith(idioma)).map((voz) => new Option(`${voz.name} (${voz.lang})`, voz.name)));
-            if ([...select.options].some((opcion) => opcion.value === anterior)) select.value = anterior;
-        });
-    }
-    function guardarConfigAvisos() {
-        localStorage.setItem(CLAVE_CONFIG_AVISOS, JSON.stringify({ vozEs: elementos.vozEspanol.value, vozIt: elementos.vozItaliano.value, velocidad: elementos.velocidadVoz.value, tono: elementos.tonoVoz.value }));
-    }
-    [elementos.vozEspanol, elementos.vozItaliano, elementos.velocidadVoz, elementos.tonoVoz].forEach((control) => control.addEventListener("change", guardarConfigAvisos));
-    cargarVoces();
-    if ("speechSynthesis" in window) window.speechSynthesis.addEventListener?.("voiceschanged", cargarVoces);
     actualizarEstadoAudios();
 }
 

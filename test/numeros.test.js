@@ -6,13 +6,13 @@ const Module = require("node:module");
 const { numeroEnEspanol, numeroEnItaliano } = require("../lib/numeros");
 const { validarConsulta, crearTexto } = require("../lib/tts");
 
-const cargarConfiguracion = () => {
+const cargarApiTts = () => {
     const cargarOriginal = Module._load;
     try {
         Module._load = (request, parent, isMain) => request === "@google-cloud/text-to-speech"
             ? {}
             : cargarOriginal(request, parent, isMain);
-        return require("../api/tts").CONFIGURACION;
+        return require("../api/tts");
     } finally {
         Module._load = cargarOriginal;
     }
@@ -41,33 +41,54 @@ test("rechaza valores fuera del rango", () => {
 });
 
 test("construye las frases sin aceptar texto libre", () => {
-    assert.equal(crearTexto(13, "es"), "Número... ¡trece!");
-    assert.equal(crearTexto(13, "it"), "Numero... tredici!");
-    assert.equal(crearTexto(22, "es"), "Número... ¡veintidós!");
-    assert.equal(crearTexto(22, "it"), "Numero... ventidue!");
-    assert.equal(crearTexto(33, "it"), "Numero... trentatré!");
-    assert.equal(crearTexto(83, "es"), "Número... ¡ochenta y tres!");
-    assert.equal(crearTexto(83, "it"), "Numero... ottantatré!");
+    assert.equal(crearTexto({ numero: 13 }, "es"), "Número... ¡trece!");
+    assert.equal(crearTexto({ numero: 13 }, "it"), "Numero... tredici!");
+    assert.equal(crearTexto({ numero: 22 }, "es"), "Número... ¡veintidós!");
+    assert.equal(crearTexto({ numero: 22 }, "it"), "Numero... ventidue!");
+    assert.equal(crearTexto({ numero: 33 }, "it"), "Numero... trentatré!");
+    assert.equal(crearTexto({ numero: 83 }, "es"), "Número... ¡ochenta y tres!");
+    assert.equal(crearTexto({ numero: 83 }, "it"), "Numero... ottantatré!");
+    assert.equal(crearTexto({ evento: "linea" }, "es"), "¡Han cantado línea!");
+    assert.equal(crearTexto({ evento: "linea" }, "it"), "Hanno fatto cinquina!");
+    assert.equal(crearTexto({ evento: "bingo" }, "es"), "¡Han cantado bingo!");
+    assert.equal(crearTexto({ evento: "bingo" }, "it"), "Hanno fatto bingo!");
 });
 
 test("valida estrictamente los parámetros del endpoint", () => {
     assert.deepEqual(validarConsulta({ numero: "13", idioma: "es", v: "rasalgethi-v1" }), { numero: 13, idioma: "es" });
     assert.deepEqual(validarConsulta({ numero: "90", idioma: "it", v: "rasalgethi-v1" }), { numero: 90, idioma: "it" });
+    assert.deepEqual(validarConsulta({ evento: "linea", idioma: "es", v: "rasalgethi-v2" }), { evento: "linea", idioma: "es" });
+    assert.deepEqual(validarConsulta({ evento: "bingo", idioma: "it", v: "rasalgethi-v2" }), { evento: "bingo", idioma: "it" });
     for (const query of [
         { numero: "13", idioma: "es" }, { numero: "13", idioma: "es", v: "" },
         { numero: "13", idioma: "es", v: "con espacios" }, { numero: "13", idioma: "es", v: "con/barra" },
         { numero: "13", idioma: "es", v: "a".repeat(51) }, { numero: "13", idioma: "es", v: ["v1"] },
         { numero: "0", idioma: "es", v: "v1" }, { numero: "91", idioma: "it", v: "v1" },
         { numero: "13", idioma: "fr", v: "v1" }, { numero: "13.0", idioma: "es", v: "v1" },
-        { numero: "13", idioma: "es", v: "v1", texto: "libre" }, { numero: ["13"], idioma: "es", v: "v1" }
+        { numero: "13", idioma: "es", v: "v1", texto: "libre" }, { numero: ["13"], idioma: "es", v: "v1" },
+        { idioma: "es", v: "v1" }, { numero: "13", evento: "linea", idioma: "es", v: "v1" },
+        { evento: "tombola", idioma: "it", v: "v1" }, { evento: ["linea"], idioma: "es", v: "v1" }
     ]) {
         assert.equal(validarConsulta(query), null);
     }
 });
 
 test("configura las voces predeterminadas válidas", () => {
-    const CONFIGURACION = cargarConfiguracion();
+    const CONFIGURACION = cargarApiTts().CONFIGURACION;
     assert.equal(CONFIGURACION.es.defaultVoice, "es-ES-Neural2-A");
     assert.equal(CONFIGURACION.it.defaultVoice, "it-IT-Neural2-F");
     assert.equal(CONFIGURACION.it.languageCode, "it-IT");
+});
+
+
+test("números y eventos comparten exactamente la configuración de síntesis", () => {
+    const { crearSolicitudSintesis } = cargarApiTts();
+    for (const idioma of ["es", "it"]) {
+        const numero = crearSolicitudSintesis({ numero: 13, idioma });
+        for (const evento of ["linea", "bingo"]) {
+            const aviso = crearSolicitudSintesis({ evento, idioma });
+            assert.deepEqual(aviso.voice, numero.voice);
+            assert.deepEqual(aviso.audioConfig, numero.audioConfig);
+        }
+    }
 });
