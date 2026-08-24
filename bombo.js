@@ -3,6 +3,7 @@
 const CLAVE_ESTADO = "bingo-boda-bombo-v1";
 const CLAVE_MODO_AUDIO = "bingo-boda-modo-audio";
 const CLAVE_MODO_OBTENCION = "bingo-boda-modo-obtencion";
+const CLAVE_CONFIG_AVISOS = "bingo-boda-config-avisos";
 const VERSION_AUDIO = "rasalgethi-v1";
 const CACHE_TTS = `bingo-tts-${VERSION_AUDIO}`;
 const TOTAL_AUDIOS = 180;
@@ -24,7 +25,14 @@ const elementos = {
     contadorAudios: document.getElementById("contadorAudios"), progresoAudios: document.getElementById("progresoAudios"),
     estadoAudios: document.getElementById("estadoAudios"), prepararAudios: document.getElementById("prepararAudios"),
     completarAudios: document.getElementById("completarAudios"), cancelarDescarga: document.getElementById("cancelarDescarga"),
-    eliminarAudios: document.getElementById("eliminarAudios")
+    eliminarAudios: document.getElementById("eliminarAudios"),
+    cantarLinea: document.getElementById("cantarLinea"), cantarBingo: document.getElementById("cantarBingo"),
+    confirmaciones: document.getElementById("confirmaciones"), avisoJugada: document.getElementById("avisoJugada"),
+    tituloAviso: document.getElementById("tituloAviso"), textoAviso: document.getElementById("textoAviso"),
+    iconoAviso: document.getElementById("iconoAviso"), confirmarJugada: document.getElementById("confirmarJugada"),
+    falsaAlarma: document.getElementById("falsaAlarma"), vozEspanol: document.getElementById("vozEspanol"),
+    vozItaliano: document.getElementById("vozItaliano"), velocidadVoz: document.getElementById("velocidadVoz"),
+    tonoVoz: document.getElementById("tonoVoz")
 };
 
 let partida = cargarPartida();
@@ -38,19 +46,29 @@ const reproductor = new Audio();
 let wakeLock = null;
 let descargaActiva = null;
 let urlAudioActual = null;
+let botonOrigenAviso = null;
+let anunciandoJugada = false;
 
-function estadoInicial(intervalo = INTERVALO_PREDETERMINADO, extraidos = []) { return { extraidos: [...extraidos], intervalo }; }
+function estadoInicial(intervalo = INTERVALO_PREDETERMINADO, extraidos = []) {
+    return { extraidos: [...extraidos], intervalo, lineaConfirmada: false, bingoConfirmado: false, avisoPendiente: null };
+}
 function validarIntervalo(valor) { const numero = Number(valor); return Number.isInteger(numero) && numero >= 1 && numero <= 300 ? numero : null; }
 function cargarPartida() {
     try {
         const guardada = JSON.parse(localStorage.getItem(CLAVE_ESTADO));
         const validos = Array.isArray(guardada?.extraidos) && new Set(guardada.extraidos).size === guardada.extraidos.length
             && guardada.extraidos.every((n) => Number.isInteger(n) && n >= 1 && n <= TOTAL_BOLAS);
-        if (validos) return estadoInicial(validarIntervalo(guardada.intervalo) || INTERVALO_PREDETERMINADO, guardada.extraidos);
+        if (validos) {
+            const estado = estadoInicial(validarIntervalo(guardada.intervalo) || INTERVALO_PREDETERMINADO, guardada.extraidos);
+            estado.lineaConfirmada = guardada.lineaConfirmada === true;
+            estado.bingoConfirmado = guardada.bingoConfirmado === true;
+            estado.avisoPendiente = ["linea", "bingo"].includes(guardada.avisoPendiente) ? guardada.avisoPendiente : null;
+            return estado;
+        }
     } catch (_error) { localStorage.removeItem(CLAVE_ESTADO); }
     return estadoInicial();
 }
-function guardarPartida() { localStorage.setItem(CLAVE_ESTADO, JSON.stringify({ extraidos: partida.extraidos, intervalo: partida.intervalo })); }
+function guardarPartida() { localStorage.setItem(CLAVE_ESTADO, JSON.stringify(partida)); }
 
 function cancelarLocucion() {
     cicloLocucion += 1;
@@ -60,6 +78,8 @@ function cancelarLocucion() {
     urlAudioActual = null;
     if (resolverReproduccion) resolverReproduccion();
     resolverReproduccion = null;
+    anunciandoJugada = false;
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 function crearRutaTts(numero, idioma) {
     return `/api/tts?numero=${encodeURIComponent(numero)}&idioma=${encodeURIComponent(idioma)}&v=${encodeURIComponent(VERSION_AUDIO)}`;
@@ -131,7 +151,72 @@ async function probarAudio() {
     await locutarNumero(13);
 }
 
+const textosJugada = {
+    linea: { es: "¡Han cantado línea!", it: "Hanno fatto cinquina!", icono: "〰", confirmar: "Confirmar línea" },
+    bingo: { es: "¡Han cantado bingo!", it: "Hanno fatto tombola!", icono: "★", confirmar: "Confirmar bingo" }
+};
+function secuenciaIdiomas() {
+    return { "es-it": ["es", "it"], "it-es": ["it", "es"], es: ["es"], it: ["it"], off: [] }[elementos.modoAudio.value] || [];
+}
+function vozSeleccionada(idioma) {
+    if (!("speechSynthesis" in window)) return null;
+    const nombre = idioma === "es" ? elementos.vozEspanol.value : elementos.vozItaliano.value;
+    return window.speechSynthesis.getVoices().find((voz) => voz.name === nombre) || null;
+}
+function pronunciarFrase(texto, idioma, ciclo) {
+    return new Promise((resolve) => {
+        if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window) || ciclo !== cicloLocucion) return resolve();
+        const locucion = new SpeechSynthesisUtterance(texto);
+        locucion.lang = idioma === "es" ? "es-ES" : "it-IT";
+        locucion.voice = vozSeleccionada(idioma);
+        locucion.rate = Number(elementos.velocidadVoz.value) || 1;
+        locucion.pitch = Number(elementos.tonoVoz.value) || 1;
+        locucion.onend = resolve; locucion.onerror = resolve;
+        window.speechSynthesis.speak(locucion);
+    });
+}
+async function anunciarJugada(tipo) {
+    const ciclo = cicloLocucion;
+    anunciandoJugada = true;
+    for (const idioma of secuenciaIdiomas()) {
+        if (ciclo !== cicloLocucion || partida.avisoPendiente !== tipo) break;
+        await pronunciarFrase(textosJugada[tipo][idioma], idioma, ciclo);
+    }
+    if (ciclo === cicloLocucion) anunciandoJugada = false;
+}
+function detenerParaComprobar() {
+    automaticoActivo = false; limpiarTemporizador(); cancelarLocucion(); liberarWakeLock();
+}
+function mostrarAviso(tipo, anunciar = true) {
+    if (!textosJugada[tipo] || elementos.avisoJugada.open || partida.bingoConfirmado || (tipo === "linea" && partida.lineaConfirmada)) return;
+    detenerParaComprobar();
+    partida.avisoPendiente = tipo; guardarPartida();
+    botonOrigenAviso = document.activeElement;
+    const texto = textosJugada[tipo];
+    elementos.avisoJugada.dataset.tipo = tipo; elementos.tituloAviso.textContent = texto.es;
+    elementos.textoAviso.textContent = texto.it; elementos.iconoAviso.textContent = texto.icono;
+    elementos.confirmarJugada.textContent = texto.confirmar;
+    elementos.avisoJugada.showModal(); elementos.confirmarJugada.focus(); actualizarControles("pausado");
+    if (anunciar) anunciarJugada(tipo);
+}
+function cerrarAviso() {
+    cancelarLocucion(); partida.avisoPendiente = null; guardarPartida();
+    elementos.avisoJugada.close(); actualizarControles("pausado");
+    if (botonOrigenAviso?.isConnected) botonOrigenAviso.focus();
+    botonOrigenAviso = null;
+}
+function confirmarJugada() {
+    const tipo = partida.avisoPendiente;
+    if (!tipo) return;
+    if (tipo === "linea") partida.lineaConfirmada = true;
+    else partida.bingoConfirmado = true;
+    cerrarAviso(); guardarPartida(); renderizar();
+    if (tipo === "bingo") elementos.mensaje.textContent = "¡Bingo confirmado! Partida finalizada.";
+}
+function falsaAlarma() { if (partida.avisoPendiente) cerrarAviso(); }
+
 function extraerNumero() {
+    if (partida.avisoPendiente || partida.bingoConfirmado) return null;
     if (automaticoActivo && document.hidden) return null;
     const disponibles = Array.from({ length: TOTAL_BOLAS }, (_, i) => i + 1).filter((n) => !partida.extraidos.includes(n));
     if (!disponibles.length) { terminarPartida(); return null; }
@@ -142,14 +227,14 @@ function extraerNumero() {
 }
 function animarBola() { elementos.actual.classList.remove("nueva"); void elementos.actual.offsetWidth; elementos.actual.classList.add("nueva"); }
 async function extraccionManual() {
-    if (bloqueoManual || automaticoActivo || reproduciendo) return;
+    if (bloqueoManual || automaticoActivo || reproduciendo || partida.avisoPendiente || partida.bingoConfirmado) return;
     bloqueoManual = true; actualizarControles();
     const numero = extraerNumero();
     if (numero !== null) await locutarNumero(numero);
     bloqueoManual = false; actualizarControles();
 }
 async function iniciarAutomatico() {
-    if (automaticoActivo || partida.extraidos.length === TOTAL_BOLAS || !actualizarIntervalo()) return;
+    if (automaticoActivo || partida.extraidos.length === TOTAL_BOLAS || partida.avisoPendiente || partida.bingoConfirmado || !actualizarIntervalo()) return;
     automaticoActivo = true; actualizarControles(); solicitarWakeLock();
     await cicloAutomatico();
 }
@@ -188,7 +273,11 @@ function renderizar() {
     elementos.actual.textContent = partida.extraidos.at(-1) ?? "—"; elementos.anterior.textContent = partida.extraidos.at(-2) ?? "—";
     elementos.restantes.textContent = `Quedan ${TOTAL_BOLAS - partida.extraidos.length} de ${TOTAL_BOLAS}`;
     elementos.totalExtraidos.textContent = partida.extraidos.length; elementos.historialVacio.hidden = partida.extraidos.length > 0;
-    elementos.listaSalida.replaceChildren(...partida.extraidos.map(crearElementoSalida)); renderizarCuadricula(); actualizarControles();
+    elementos.listaSalida.replaceChildren(...partida.extraidos.map(crearElementoSalida)); renderizarCuadricula();
+    elementos.confirmaciones.textContent = partida.bingoConfirmado ? "★ Bingo confirmado · Partida finalizada" : partida.lineaConfirmada ? "✓ Línea confirmada" : "";
+    elementos.cantarLinea.classList.toggle("confirmada", partida.lineaConfirmada);
+    elementos.cantarLinea.innerHTML = partida.lineaConfirmada ? '<span aria-hidden="true">✓</span> Línea confirmada' : '<span aria-hidden="true">〰</span> ¡Línea!';
+    actualizarControles();
 }
 function crearElementoSalida(numero, indice) {
     const elemento = document.createElement("li"); elemento.textContent = numero; elemento.setAttribute("aria-label", `${numero}, ${indice + 1}.º en salir`);
@@ -205,12 +294,17 @@ function renderizarCuadricula() {
 }
 function actualizarControles(forzarEstado) {
     const terminada = partida.extraidos.length === TOTAL_BOLAS;
-    elementos.sacar.disabled = automaticoActivo || terminada || bloqueoManual || reproduciendo;
-    elementos.iniciar.disabled = automaticoActivo || terminada || reproduciendo;
+    const bloqueada = Boolean(partida.avisoPendiente) || partida.bingoConfirmado;
+    elementos.sacar.disabled = automaticoActivo || terminada || bloqueoManual || reproduciendo || bloqueada;
+    elementos.iniciar.disabled = automaticoActivo || terminada || reproduciendo || bloqueada;
     elementos.iniciar.textContent = partida.extraidos.length && !terminada ? "Reanudar automático" : "Iniciar automático";
     elementos.pausar.disabled = !automaticoActivo; elementos.selectorIntervalo.disabled = automaticoActivo;
     elementos.probarAudio.disabled = reproduciendo || automaticoActivo || bloqueoManual;
+    elementos.cantarLinea.disabled = partida.lineaConfirmada || partida.bingoConfirmado || Boolean(partida.avisoPendiente) || anunciandoJugada;
+    elementos.cantarBingo.disabled = partida.bingoConfirmado || Boolean(partida.avisoPendiente) || anunciandoJugada;
     if (automaticoActivo) mostrarEstado(reproduciendo ? "Automático activo · reproduciendo" : "Automático activo", "activo");
+    else if (partida.bingoConfirmado) { mostrarEstado("Bingo confirmado · Partida finalizada", "terminado"); elementos.cuentaAtras.textContent = "Partida finalizada"; }
+    else if (partida.avisoPendiente) { mostrarEstado("Pausado para comprobar", "pausado"); elementos.cuentaAtras.textContent = "Comprobación en curso"; }
     else if (terminada || forzarEstado === "terminado") { mostrarEstado("Partida terminada", "terminado"); elementos.cuentaAtras.textContent = "No quedan bolas"; }
     else if (reproduciendo) mostrarEstado("Audio en curso", "activo");
     else if (forzarEstado === "pausado" || partida.extraidos.length) { mostrarEstado("Pausado", "pausado"); elementos.cuentaAtras.textContent = "Automático pausado"; }
@@ -228,7 +322,9 @@ function pedirReinicio() {
     else if (window.confirm("Se borrará el historial, volverán las 90 bolas y se detendrá el automático. ¿Reiniciar?")) reiniciarPartida();
 }
 function reiniciarPartida() {
-    pausarAutomatico(); localStorage.removeItem(CLAVE_ESTADO); partida = estadoInicial(partida.intervalo);
+    detenerParaComprobar();
+    if (elementos.avisoJugada.open) elementos.avisoJugada.close();
+    localStorage.removeItem(CLAVE_ESTADO); partida = estadoInicial(partida.intervalo); botonOrigenAviso = null;
     elementos.intervalo.value = partida.intervalo; elementos.mensaje.textContent = "Partida reiniciada."; guardarPartida(); marcarOpcionActiva(); renderizar();
 }
 async function solicitarWakeLock() { if (!("wakeLock" in navigator) || document.hidden) return; try { wakeLock = await navigator.wakeLock.request("screen"); } catch (_error) { wakeLock = null; } }
@@ -320,7 +416,7 @@ async function limpiarCachesTtsAntiguas() {
 
 function configurarAudio() {
     const modoGuardado = localStorage.getItem(CLAVE_MODO_AUDIO);
-    if (["es-it", "es", "it", "off"].includes(modoGuardado)) elementos.modoAudio.value = modoGuardado;
+    if (["es-it", "it-es", "es", "it", "off"].includes(modoGuardado)) elementos.modoAudio.value = modoGuardado;
     elementos.modoAudio.addEventListener("change", () => {
         localStorage.setItem(CLAVE_MODO_AUDIO, elementos.modoAudio.value);
         cancelarLocucion(); actualizarControles();
@@ -337,10 +433,31 @@ function configurarAudio() {
     elementos.completarAudios.addEventListener("click", descargarAudiosFaltantes);
     elementos.cancelarDescarga.addEventListener("click", cancelarDescargaAudios);
     elementos.eliminarAudios.addEventListener("click", eliminarAudiosGuardados);
+    let configAvisos = {};
+    try { configAvisos = JSON.parse(localStorage.getItem(CLAVE_CONFIG_AVISOS)) || {}; } catch (_error) { /* Usa valores predeterminados. */ }
+    elementos.velocidadVoz.value = configAvisos.velocidad || "1"; elementos.tonoVoz.value = configAvisos.tono || "1";
+    function cargarVoces() {
+        if (!("speechSynthesis" in window)) return;
+        const voces = window.speechSynthesis.getVoices();
+        [[elementos.vozEspanol, "es", configAvisos.vozEs], [elementos.vozItaliano, "it", configAvisos.vozIt]].forEach(([select, idioma, elegida]) => {
+            const anterior = select.value || elegida || "";
+            select.replaceChildren(new Option("Voz predeterminada", ""), ...voces.filter((voz) => voz.lang.toLowerCase().startsWith(idioma)).map((voz) => new Option(`${voz.name} (${voz.lang})`, voz.name)));
+            if ([...select.options].some((opcion) => opcion.value === anterior)) select.value = anterior;
+        });
+    }
+    function guardarConfigAvisos() {
+        localStorage.setItem(CLAVE_CONFIG_AVISOS, JSON.stringify({ vozEs: elementos.vozEspanol.value, vozIt: elementos.vozItaliano.value, velocidad: elementos.velocidadVoz.value, tono: elementos.tonoVoz.value }));
+    }
+    [elementos.vozEspanol, elementos.vozItaliano, elementos.velocidadVoz, elementos.tonoVoz].forEach((control) => control.addEventListener("change", guardarConfigAvisos));
+    cargarVoces();
+    if ("speechSynthesis" in window) window.speechSynthesis.addEventListener?.("voiceschanged", cargarVoces);
     actualizarEstadoAudios();
 }
 
 elementos.sacar.addEventListener("click", extraccionManual); elementos.iniciar.addEventListener("click", iniciarAutomatico); elementos.pausar.addEventListener("click", pausarAutomatico);
+elementos.cantarLinea.addEventListener("click", () => mostrarAviso("linea")); elementos.cantarBingo.addEventListener("click", () => mostrarAviso("bingo"));
+elementos.confirmarJugada.addEventListener("click", confirmarJugada); elementos.falsaAlarma.addEventListener("click", falsaAlarma);
+elementos.avisoJugada.addEventListener("cancel", (evento) => { evento.preventDefault(); falsaAlarma(); });
 elementos.intervalo.addEventListener("change", actualizarIntervalo); elementos.reiniciar.addEventListener("click", pedirReinicio);
 elementos.confirmacion.addEventListener("close", () => { if (elementos.confirmacion.returnValue === "confirm") reiniciarPartida(); });
 document.querySelectorAll(".opcion").forEach((boton) => boton.addEventListener("click", () => { elementos.intervalo.value = boton.dataset.segundos; actualizarIntervalo(); }));
@@ -356,3 +473,7 @@ if ("serviceWorker" in navigator) {
 
 limpiarCachesTtsAntiguas().catch(() => { /* Una limpieza fallida no debe bloquear la interfaz. */ });
 configurarAudio(); elementos.intervalo.value = partida.intervalo; marcarOpcionActiva(); renderizar();
+if (partida.avisoPendiente) {
+    const pendiente = partida.avisoPendiente; partida.avisoPendiente = null;
+    window.setTimeout(() => mostrarAviso(pendiente, false), 0);
+}

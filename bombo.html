@@ -44,6 +44,12 @@
             <p id="mensaje" class="mensaje" aria-live="assertive"></p>
             <button id="sacar" class="boton boton-principal" type="button">Sacar número</button>
 
+            <div class="avisos-partida" aria-label="Avisos de jugada">
+                <button id="cantarLinea" class="boton cantar cantar-linea" type="button"><span aria-hidden="true">〰</span> ¡Línea!</button>
+                <button id="cantarBingo" class="boton cantar cantar-bingo" type="button"><span aria-hidden="true">★</span> ¡Bingo!</button>
+            </div>
+            <p id="confirmaciones" class="confirmaciones" role="status" aria-live="polite"></p>
+
             <details class="voz-configuracion">
                 <summary>Audio del bingo</summary>
                 <fieldset class="voz-controles">
@@ -51,10 +57,27 @@
                         <label for="modoAudio">Modo de audio</label>
                         <select id="modoAudio">
                             <option value="es-it">Audio bilingüe</option>
+                            <option value="it-es">Italiano + español</option>
                             <option value="es">Solo español</option>
                             <option value="it">Solo italiano</option>
                             <option value="off">Sin audio</option>
                         </select>
+                    </div>
+                    <div class="campo-voz">
+                        <label for="vozEspanol">Voz española de avisos</label>
+                        <select id="vozEspanol"><option value="">Voz predeterminada</option></select>
+                    </div>
+                    <div class="campo-voz">
+                        <label for="vozItaliano">Voz italiana de avisos</label>
+                        <select id="vozItaliano"><option value="">Voz predeterminada</option></select>
+                    </div>
+                    <div class="campo-voz">
+                        <label for="velocidadVoz">Velocidad de avisos</label>
+                        <input id="velocidadVoz" type="range" min="0.5" max="2" step="0.1" value="1">
+                    </div>
+                    <div class="campo-voz">
+                        <label for="tonoVoz">Tono de avisos</label>
+                        <input id="tonoVoz" type="range" min="0.5" max="2" step="0.1" value="1">
                     </div>
                     <fieldset class="obtencion-audio campo-voz--ancho">
                         <legend>Modo de obtención</legend>
@@ -118,6 +141,17 @@
             </div>
         </details>
     </main>
+
+    <dialog id="avisoJugada" class="aviso-jugada" role="dialog" aria-modal="true" aria-labelledby="tituloAviso">
+        <div class="icono-aviso" id="iconoAviso" aria-hidden="true"></div>
+        <h2 id="tituloAviso"></h2>
+        <p id="textoAviso" class="traduccion-aviso"></p>
+        <p class="pausa-aviso">Partida pausada mientras se comprueba el cartón</p>
+        <div class="acciones-dialogo">
+            <button id="confirmarJugada" class="boton" type="button"></button>
+            <button id="falsaAlarma" class="boton boton-secundario" type="button">Falsa alarma</button>
+        </div>
+    </dialog>
 
     <dialog id="confirmacion">
         <form method="dialog">
