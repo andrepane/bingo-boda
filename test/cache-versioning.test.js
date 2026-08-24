@@ -26,7 +26,7 @@ test("la limpieza TTS se limita a versiones antiguas de bingo-tts", () => {
 });
 
 test("el Service Worker elimina solo versiones antiguas de bingo-app", () => {
-    assert.match(serviceWorker, /const VERSION_APP = "v2";/);
+    assert.match(serviceWorker, /const VERSION_APP = "v3";/);
     assert.match(serviceWorker, /const CACHE_APP = `bingo-app-\$\{VERSION_APP\}`;/);
     assert.match(serviceWorker, /nombre\.startsWith\("bingo-app-"\) && nombre !== CACHE_APP/);
     assert.match(serviceWorker, /self\.skipWaiting\(\)/);
