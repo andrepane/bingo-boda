@@ -28,7 +28,7 @@ module.exports = async function tts(request, response) {
     }
 
     const consulta = validarConsulta(request.query);
-    if (!consulta) return responderError(response, 400, "Parámetros no válidos: indique exactamente un número (1-90) o un evento (linea/bingo), idioma es/it y versión");
+    if (!consulta) return responderError(response, 400, "Parámetros no válidos: indique exactamente un número (1-90) o un evento admitido, idioma es/it y versión");
 
     try {
         const base64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64;
