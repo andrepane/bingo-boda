@@ -52,6 +52,14 @@ test("construye las frases sin aceptar texto libre", () => {
     assert.equal(crearTexto({ evento: "linea" }, "it"), "Hanno fatto cinquina!");
     assert.equal(crearTexto({ evento: "bingo" }, "es"), "¡Han cantado bingo!");
     assert.equal(crearTexto({ evento: "bingo" }, "it"), "Hanno fatto bingo!");
+    assert.equal(crearTexto({ evento: "linea_correcta" }, "es"), "Línea es correcta! Seguimos para Bingo");
+    assert.equal(crearTexto({ evento: "linea_correcta" }, "it"), "La cinquina è corretta! Continuiamo per il Bingo");
+    assert.equal(crearTexto({ evento: "bingo_correcto" }, "es"), "El Bingo es correcto, finaliza la partida");
+    assert.equal(crearTexto({ evento: "bingo_correcto" }, "it"), "Il Bingo è corretto, la partita finisce");
+    assert.equal(crearTexto({ evento: "linea_incorrecta" }, "es"), "Línea incorrecta, continuamos");
+    assert.equal(crearTexto({ evento: "linea_incorrecta" }, "it"), "Cinquina errata, continuiamo");
+    assert.equal(crearTexto({ evento: "bingo_incorrecto" }, "es"), "Bingo incorrecto, continuamos");
+    assert.equal(crearTexto({ evento: "bingo_incorrecto" }, "it"), "Bingo errato, continuiamo");
 });
 
 test("valida estrictamente los parámetros del endpoint", () => {
@@ -59,6 +67,7 @@ test("valida estrictamente los parámetros del endpoint", () => {
     assert.deepEqual(validarConsulta({ numero: "90", idioma: "it", v: "rasalgethi-v1" }), { numero: 90, idioma: "it" });
     assert.deepEqual(validarConsulta({ evento: "linea", idioma: "es", v: "rasalgethi-v2" }), { evento: "linea", idioma: "es" });
     assert.deepEqual(validarConsulta({ evento: "bingo", idioma: "it", v: "rasalgethi-v2" }), { evento: "bingo", idioma: "it" });
+    assert.deepEqual(validarConsulta({ evento: "linea_correcta", idioma: "it", v: "rasalgethi-v3" }), { evento: "linea_correcta", idioma: "it" });
     for (const query of [
         { numero: "13", idioma: "es" }, { numero: "13", idioma: "es", v: "" },
         { numero: "13", idioma: "es", v: "con espacios" }, { numero: "13", idioma: "es", v: "con/barra" },
@@ -85,7 +94,7 @@ test("números y eventos comparten exactamente la configuración de síntesis", 
     const { crearSolicitudSintesis } = cargarApiTts();
     for (const idioma of ["es", "it"]) {
         const numero = crearSolicitudSintesis({ numero: 13, idioma });
-        for (const evento of ["linea", "bingo"]) {
+        for (const evento of ["linea", "bingo", "linea_correcta", "bingo_correcto", "linea_incorrecta", "bingo_incorrecto"]) {
             const aviso = crearSolicitudSintesis({ evento, idioma });
             assert.deepEqual(aviso.voice, numero.voice);
             assert.deepEqual(aviso.audioConfig, numero.audioConfig);

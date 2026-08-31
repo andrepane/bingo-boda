@@ -3,9 +3,9 @@
 const CLAVE_ESTADO = "bingo-boda-bombo-v1";
 const CLAVE_MODO_AUDIO = "bingo-boda-modo-audio";
 const CLAVE_MODO_OBTENCION = "bingo-boda-modo-obtencion";
-const VERSION_AUDIO = "rasalgethi-v2";
+const VERSION_AUDIO = "rasalgethi-v3";
 const CACHE_TTS = `bingo-tts-${VERSION_AUDIO}`;
-const TOTAL_AUDIOS = 184;
+const TOTAL_AUDIOS = 192;
 const TOTAL_BOLAS = 90;
 const INTERVALO_PREDETERMINADO = 5;
 
@@ -86,7 +86,8 @@ function crearRutaEventoTts(evento, idioma) {
 function rutasTts() {
     return ["es", "it"].flatMap((idioma) => [
         ...Array.from({ length: TOTAL_BOLAS }, (_, i) => crearRutaTts(i + 1, idioma)),
-        crearRutaEventoTts("linea", idioma), crearRutaEventoTts("bingo", idioma)
+        ...["linea", "bingo", "linea_correcta", "bingo_correcto", "linea_incorrecta", "bingo_incorrecto"]
+            .map((evento) => crearRutaEventoTts(evento, idioma))
     ]);
 }
 function modoObtencion() { return document.querySelector('[name="modoObtencion"]:checked')?.value || "streaming"; }
@@ -161,6 +162,12 @@ const textosJugada = {
     linea: { es: "¡Han cantado línea!", it: "Hanno fatto cinquina!", icono: "〰", confirmar: "Confirmar línea" },
     bingo: { es: "¡Han cantado bingo!", it: "Hanno fatto bingo!", icono: "★", confirmar: "Confirmar bingo" }
 };
+const resultadosJugada = {
+    linea_correcta: { es: "Línea es correcta! Seguimos para Bingo", it: "La cinquina è corretta! Continuiamo per il Bingo" },
+    bingo_correcto: { es: "El Bingo es correcto, finaliza la partida", it: "Il Bingo è corretto, la partita finisce" },
+    linea_incorrecta: { es: "Línea incorrecta, continuamos", it: "Cinquina errata, continuiamo" },
+    bingo_incorrecto: { es: "Bingo incorrecto, continuamos", it: "Bingo errato, continuiamo" }
+};
 function secuenciaIdiomas() {
     return { "es-it": ["es", "it"], "it-es": ["it", "es"], es: ["es"], it: ["it"], off: [] }[elementos.modoAudio.value] || [];
 }
@@ -178,6 +185,24 @@ async function anunciarJugada(tipo) {
         if (ciclo === cicloLocucion) elementos.mensaje.textContent = "No se ha podido reproducir el aviso. La partida puede continuar.";
     }
     if (ciclo === cicloLocucion) { anunciandoJugada = false; reproduciendo = false; actualizarControles(); }
+}
+async function anunciarResultado(evento) {
+    const texto = resultadosJugada[evento];
+    if (!texto) return;
+    elementos.mensaje.textContent = `${texto.es} · ${texto.it}`;
+    const ciclo = cicloLocucion;
+    reproduciendo = true;
+    actualizarControles();
+    try {
+        for (const idioma of secuenciaIdiomas()) {
+            if (ciclo !== cicloLocucion) break;
+            await reproducirRutaTts(crearRutaEventoTts(evento, idioma), ciclo);
+        }
+    } catch (_error) {
+        if (ciclo === cicloLocucion) elementos.mensaje.textContent += " (No se ha podido reproducir el audio.)";
+    } finally {
+        if (ciclo === cicloLocucion) { reproduciendo = false; actualizarControles(); }
+    }
 }
 function detenerParaComprobar() {
     automaticoActivo = false; limpiarTemporizador(); cancelarLocucion(); liberarWakeLock();
@@ -206,9 +231,14 @@ function confirmarJugada() {
     if (tipo === "linea") partida.lineaConfirmada = true;
     else partida.bingoConfirmado = true;
     cerrarAviso(); guardarPartida(); renderizar();
-    if (tipo === "bingo") elementos.mensaje.textContent = "¡Bingo confirmado! Partida finalizada.";
+    anunciarResultado(tipo === "linea" ? "linea_correcta" : "bingo_correcto");
 }
-function falsaAlarma() { if (partida.avisoPendiente) cerrarAviso(); }
+function falsaAlarma() {
+    const tipo = partida.avisoPendiente;
+    if (!tipo) return;
+    cerrarAviso();
+    anunciarResultado(tipo === "linea" ? "linea_incorrecta" : "bingo_incorrecto");
+}
 
 function extraerNumero() {
     if (partida.avisoPendiente || partida.bingoConfirmado) return null;

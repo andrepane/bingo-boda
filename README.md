@@ -23,23 +23,23 @@ El manifest conserva `monograma.png` como icono de la aplicación. Para completa
 5. No subas nunca el JSON de la cuenta de servicio al repositorio. El `.gitignore` excluye los JSON salvo los manifiestos de npm necesarios.
 6. Despliega el proyecto. Vercel servirá los archivos estáticos y ejecutará `api/tts.js` como función backend.
 7. Comprueba los dos idiomas abriendo:
-   - `/api/tts?numero=13&idioma=es&v=rasalgethi-v2`
-   - `/api/tts?numero=13&idioma=it&v=rasalgethi-v2`
+   - `/api/tts?numero=13&idioma=es&v=rasalgethi-v3`
+   - `/api/tts?numero=13&idioma=it&v=rasalgethi-v3`
 
 Las voces predeterminadas son `es-ES-Neural2-A` e `it-IT-Neural2-F`; las variables opcionales permiten sustituirlas sin cambiar el código.
 
 ## Audio sin conexión
 
-El apartado **Audio del bingo** permite preparar los 184 audios (90 números y 2 avisos por idioma) en la caché `bingo-tts-rasalgethi-v2`. El modo **Streaming** busca primero en esa caché y guarda automáticamente cualquier audio nuevo; el modo **Sin conexión** nunca consulta el backend y continúa la partida aunque falte un audio.
+El apartado **Audio del bingo** permite preparar los 192 audios (90 números y 6 avisos por idioma) en la caché `bingo-tts-rasalgethi-v3`. El modo **Streaming** busca primero en esa caché y guarda automáticamente cualquier audio nuevo; el modo **Sin conexión** nunca consulta el backend y continúa la partida aunque falte un audio.
 
 Para probarlo en el navegador:
 
 1. Abre `bombo.html` mediante HTTPS (o `localhost`), despliega **Audio del bingo** y pulsa **Preparar audios**.
-2. Espera a que el estado indique `184 / 184 audios preparados`.
-3. En DevTools, abre **Application → Cache Storage → bingo-tts-rasalgethi-v2** y comprueba las 184 entradas.
+2. Espera a que el estado indique `192 / 192 audios preparados`.
+3. En DevTools, abre **Application → Cache Storage → bingo-tts-rasalgethi-v3** y comprueba las 192 entradas.
 4. Selecciona **Sin conexión** y activa **Network → Offline**. Extrae números o usa el modo automático: las locuciones almacenadas seguirán reproduciéndose.
 5. Vuelve a estar online, elimina una entrada desde Cache Storage y pulsa **Completar descarga** para verificar que solo se recupera la ausente.
-6. Pulsa **Eliminar audios guardados**, confirma la acción y comprueba que únicamente desaparece `bingo-tts-rasalgethi-v2`.
+6. Pulsa **Eliminar audios guardados**, confirma la acción y comprueba que únicamente desaparece `bingo-tts-rasalgethi-v3`.
 
 ## Versionado de cachés
 
